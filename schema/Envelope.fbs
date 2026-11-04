@@ -1,0 +1,21 @@
+namespace Airlance.Wire;
+
+enum MessageKind : ushort {
+  None = 0,
+  Ping = 1,
+  Pong = 2,
+  Error = 3,
+  ProfileGet = 4,
+  ProfileSet = 5,
+  ProfileData = 6,
+}
+
+table Envelope {
+  seq: ulong;
+  request_id: ulong;
+  kind: ushort;
+  body: [ubyte];
+}
+
+root_type Envelope;
+file_identifier "ALNC";

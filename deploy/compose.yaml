@@ -1,0 +1,64 @@
+# PostgreSQL, the migration and the server. The server also joins the auth stack's network: its cloudflared reaches the
+# server there (add the tunnel route api.airlance.org -> http://airlance-server:8080), and the server fetches the signing
+# keys from auth directly. Start the auth stack first.
+# Names must not repeat those of the auth stack: on a shared network a name such as "postgres" would resolve to its database.
+name: airlance-server
+
+services:
+  airlance-server-postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: airlance
+      POSTGRES_USER: airlance
+      POSTGRES_PASSWORD: ${AIRLANCE_SERVER_POSTGRES_PASSWORD:?run scripts/init.sh}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U airlance -d airlance"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [internal]
+
+  migrate:
+    image: airlance-server:local
+    build: {context: ..}
+    command: ["migrate"]
+    env_file: [.env]
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    restart: "no"
+    depends_on:
+      airlance-server-postgres: {condition: service_healthy}
+    networks: [internal]
+
+  airlance-server:
+    image: airlance-server:local
+    restart: unless-stopped
+    env_file: [.env]
+    environment:
+      AIRLANCE_SERVER_ADDR: 0.0.0.0:8080
+    read_only: true
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "/airlance-server", "healthcheck"]
+      interval: 10s
+      timeout: 6s
+      retries: 6
+      start_period: 10s
+    depends_on:
+      airlance-server-postgres: {condition: service_healthy}
+      migrate: {condition: service_completed_successfully}
+    networks: [internal, auth]
+
+networks:
+  internal:
+  auth:
+    external: true
+    name: airlance-auth-prod_internal
+
+volumes:
+  postgres-data:

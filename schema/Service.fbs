@@ -1,0 +1,33 @@
+namespace Airlance.Wire;
+
+table Ping {
+  ping_id: long;
+}
+
+table Pong {
+  ping_id: long;
+}
+
+table Error {
+  code: int;
+  message: string;
+}
+
+table ProfileGet {
+}
+
+table ProfileSet {
+  first_name: string;
+  last_name: string;
+  username: string;
+  bio: string;
+}
+
+table ProfileData {
+  subject: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  bio: string;
+  updated_at_unix: long;
+}
