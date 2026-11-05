@@ -2,6 +2,8 @@ package main
 
 import (
 	"context"
+	"crypto/ed25519"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -39,8 +41,11 @@ func run(ctx context.Context, args []string, logger *slog.Logger) error {
 		command = args[0]
 	}
 
-	if command == "healthcheck" {
+	switch command {
+	case "healthcheck":
 		return healthcheck(ctx)
+	case "wireauth-public":
+		return printWireAuthPublic()
 	}
 
 	cfg, err := config.Load(os.Getenv)
@@ -54,8 +59,26 @@ func run(ctx context.Context, args []string, logger *slog.Logger) error {
 	case "migrate":
 		return database.Migrate(ctx, cfg.DatabaseURL)
 	default:
-		return fmt.Errorf("unknown command %q: serve, migrate or healthcheck", command)
+		return fmt.Errorf("unknown command %q: serve, migrate, healthcheck or wireauth-public", command)
 	}
+}
+
+func printWireAuthPublic() error {
+	keys, err := config.LoadWireAuthKeys(os.Getenv("AIRLANCE_SERVER_WIREAUTH_KEYS"))
+	if err != nil {
+		return err
+	}
+
+	for id, key := range keys {
+		public, ok := key.Public().(ed25519.PublicKey)
+		if !ok {
+			return errors.New("not an Ed25519 key")
+		}
+
+		fmt.Printf("%d %s\n", id, base64.StdEncoding.EncodeToString(public))
+	}
+
+	return nil
 }
 
 func healthcheck(ctx context.Context) error {

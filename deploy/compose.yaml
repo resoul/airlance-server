@@ -2,9 +2,80 @@
 # server there (add the tunnel route api.airlance.org -> http://airlance-server:8080), and the server fetches the signing
 # keys from auth directly. Start the auth stack first.
 # Names must not repeat those of the auth stack: on a shared network a name such as "postgres" would resolve to its database.
+# Files live in SeaweedFS. Its storage ports answer without a signature, so it stays on the internal network, and only the S3
+# gateway joins the shared one (add the tunnel route files.airlance.org -> http://airlance-server-files:8333).
 name: airlance-server
 
 services:
+  airlance-server-meilisearch:
+    image: getmeili/meilisearch:v1.56.1
+    restart: unless-stopped
+    environment:
+      MEILI_MASTER_KEY: ${AIRLANCE_SERVER_MEILI_KEY:?run scripts/init.sh}
+      MEILI_ENV: production
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_DB_PATH: /meili_data/data.ms
+      MEILI_DUMP_DIR: /meili_data/dumps
+      MEILI_SNAPSHOT_DIR: /meili_data/snapshots
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    volumes:
+      - meilisearch-data:/meili_data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:7700/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [internal]
+
+  airlance-server-seaweedfs:
+    image: chrislusf/seaweedfs:4.50
+    restart: unless-stopped
+    user: "1000:1000"
+    command:
+      - server
+      - -filer
+      - -dir=/data
+      - -ip=airlance-server-seaweedfs
+      - -ip.bind=0.0.0.0
+      - -volume.max=0
+      - -master.telemetry=false
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8888/"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    networks: [internal]
+
+  airlance-server-files:
+    image: chrislusf/seaweedfs:4.50
+    restart: unless-stopped
+    user: "1000:1000"
+    command: ["s3", "-filer=airlance-server-seaweedfs:8888", "-port=8333", "-ip.bind=0.0.0.0"]
+    environment:
+      AWS_ACCESS_KEY_ID: ${AIRLANCE_SERVER_S3_ACCESS_KEY:?run scripts/init.sh}
+      AWS_SECRET_ACCESS_KEY: ${AIRLANCE_SERVER_S3_SECRET_KEY:?run scripts/init.sh}
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+    cap_drop: [ALL]
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:8333/healthz"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    depends_on:
+      airlance-server-seaweedfs: {condition: service_healthy}
+    networks: [internal, auth]
+
   airlance-server-postgres:
     image: postgres:17-alpine
     restart: unless-stopped
@@ -51,6 +122,8 @@ services:
       start_period: 10s
     depends_on:
       airlance-server-postgres: {condition: service_healthy}
+      airlance-server-files: {condition: service_healthy}
+      airlance-server-meilisearch: {condition: service_started}
       migrate: {condition: service_completed_successfully}
     networks: [internal, auth]
 
@@ -62,3 +135,5 @@ networks:
 
 volumes:
   postgres-data:
+  seaweedfs-data:
+  meilisearch-data:

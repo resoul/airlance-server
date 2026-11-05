@@ -7,33 +7,66 @@ import "strconv"
 type MessageKind uint16
 
 const (
-	MessageKindNone        MessageKind = 0
-	MessageKindPing        MessageKind = 1
-	MessageKindPong        MessageKind = 2
-	MessageKindError       MessageKind = 3
-	MessageKindProfileGet  MessageKind = 4
-	MessageKindProfileSet  MessageKind = 5
-	MessageKindProfileData MessageKind = 6
+	MessageKindNone                 MessageKind = 0
+	MessageKindPing                 MessageKind = 1
+	MessageKindPong                 MessageKind = 2
+	MessageKindError                MessageKind = 3
+	MessageKindProfileGet           MessageKind = 4
+	MessageKindProfileSet           MessageKind = 5
+	MessageKindProfileData          MessageKind = 6
+	MessageKindAuthenticate         MessageKind = 7
+	MessageKindAuthenticated        MessageKind = 8
+	MessageKindUpdatesSubscribe     MessageKind = 9
+	MessageKindUpdatesSubscribed    MessageKind = 10
+	MessageKindMediaUploadRequest   MessageKind = 11
+	MessageKindMediaUploadTicket    MessageKind = 12
+	MessageKindMediaDownloadRequest MessageKind = 13
+	MessageKindMediaDownloadTicket  MessageKind = 14
+	MessageKindSearch               MessageKind = 15
+	MessageKindSearchResults        MessageKind = 16
+	MessageKindPublicProfileGet     MessageKind = 17
 )
 
 var EnumNamesMessageKind = map[MessageKind]string{
-	MessageKindNone:        "None",
-	MessageKindPing:        "Ping",
-	MessageKindPong:        "Pong",
-	MessageKindError:       "Error",
-	MessageKindProfileGet:  "ProfileGet",
-	MessageKindProfileSet:  "ProfileSet",
-	MessageKindProfileData: "ProfileData",
+	MessageKindNone:                 "None",
+	MessageKindPing:                 "Ping",
+	MessageKindPong:                 "Pong",
+	MessageKindError:                "Error",
+	MessageKindProfileGet:           "ProfileGet",
+	MessageKindProfileSet:           "ProfileSet",
+	MessageKindProfileData:          "ProfileData",
+	MessageKindAuthenticate:         "Authenticate",
+	MessageKindAuthenticated:        "Authenticated",
+	MessageKindUpdatesSubscribe:     "UpdatesSubscribe",
+	MessageKindUpdatesSubscribed:    "UpdatesSubscribed",
+	MessageKindMediaUploadRequest:   "MediaUploadRequest",
+	MessageKindMediaUploadTicket:    "MediaUploadTicket",
+	MessageKindMediaDownloadRequest: "MediaDownloadRequest",
+	MessageKindMediaDownloadTicket:  "MediaDownloadTicket",
+	MessageKindSearch:               "Search",
+	MessageKindSearchResults:        "SearchResults",
+	MessageKindPublicProfileGet:     "PublicProfileGet",
 }
 
 var EnumValuesMessageKind = map[string]MessageKind{
-	"None":        MessageKindNone,
-	"Ping":        MessageKindPing,
-	"Pong":        MessageKindPong,
-	"Error":       MessageKindError,
-	"ProfileGet":  MessageKindProfileGet,
-	"ProfileSet":  MessageKindProfileSet,
-	"ProfileData": MessageKindProfileData,
+	"None":                 MessageKindNone,
+	"Ping":                 MessageKindPing,
+	"Pong":                 MessageKindPong,
+	"Error":                MessageKindError,
+	"ProfileGet":           MessageKindProfileGet,
+	"ProfileSet":           MessageKindProfileSet,
+	"ProfileData":          MessageKindProfileData,
+	"Authenticate":         MessageKindAuthenticate,
+	"Authenticated":        MessageKindAuthenticated,
+	"UpdatesSubscribe":     MessageKindUpdatesSubscribe,
+	"UpdatesSubscribed":    MessageKindUpdatesSubscribed,
+	"MediaUploadRequest":   MessageKindMediaUploadRequest,
+	"MediaUploadTicket":    MessageKindMediaUploadTicket,
+	"MediaDownloadRequest": MessageKindMediaDownloadRequest,
+	"MediaDownloadTicket":  MessageKindMediaDownloadTicket,
+	"Search":               MessageKindSearch,
+	"SearchResults":        MessageKindSearchResults,
+	"PublicProfileGet":     MessageKindPublicProfileGet,
 }
 
 func (v MessageKind) String() string {

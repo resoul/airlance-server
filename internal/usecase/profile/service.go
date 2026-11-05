@@ -14,13 +14,26 @@ type Repository interface {
 	Save(ctx context.Context, profile domain.Profile) error
 }
 
+type Notifier interface {
+	Notify(subject string)
+}
+
+type Notifiers []Notifier
+
+func (n Notifiers) Notify(subject string) {
+	for _, notifier := range n {
+		notifier.Notify(subject)
+	}
+}
+
 type Service struct {
 	repository Repository
+	notifier   Notifier
 	now        func() time.Time
 }
 
-func New(repository Repository, now func() time.Time) *Service {
-	return &Service{repository: repository, now: now}
+func New(repository Repository, notifier Notifier, now func() time.Time) *Service {
+	return &Service{repository: repository, notifier: notifier, now: now}
 }
 
 func (s *Service) GetOwn(ctx context.Context, principal identity.Principal) (domain.Profile, error) {
@@ -29,6 +42,19 @@ func (s *Service) GetOwn(ctx context.Context, principal identity.Principal) (dom
 	}
 
 	got, err := s.repository.Get(ctx, principal.Subject)
+	if err != nil {
+		return domain.Profile{}, fmt.Errorf("get profile: %w", err)
+	}
+
+	return got, nil
+}
+
+func (s *Service) GetPublic(ctx context.Context, principal identity.Principal, subject string) (domain.Profile, error) {
+	if !principal.HasScope(domain.ScopeRead) {
+		return domain.Profile{}, identity.ErrForbidden
+	}
+
+	got, err := s.repository.Get(ctx, subject)
 	if err != nil {
 		return domain.Profile{}, fmt.Errorf("get profile: %w", err)
 	}
@@ -49,6 +75,8 @@ func (s *Service) UpdateOwn(ctx context.Context, principal identity.Principal, f
 	if err := s.repository.Save(ctx, next); err != nil {
 		return domain.Profile{}, fmt.Errorf("save profile: %w", err)
 	}
+
+	s.notifier.Notify(principal.Subject)
 
 	return next, nil
 }

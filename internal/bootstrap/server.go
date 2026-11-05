@@ -10,12 +10,18 @@ import (
 
 	"go.airlance.org/server/internal/infrastructure/config"
 	"go.airlance.org/server/internal/infrastructure/database"
+	"go.airlance.org/server/internal/infrastructure/meili"
+	"go.airlance.org/server/internal/infrastructure/objectstore"
 	"go.airlance.org/server/internal/infrastructure/oidc"
 	"go.airlance.org/server/internal/repository/postgres"
 	"go.airlance.org/server/internal/transport/httpapi"
+	"go.airlance.org/server/internal/transport/wireauth"
 	"go.airlance.org/server/internal/transport/ws"
+	"go.airlance.org/server/internal/usecase/directory"
+	"go.airlance.org/server/internal/usecase/media"
 	"go.airlance.org/server/internal/usecase/profile"
 	"go.airlance.org/server/internal/usecase/session"
+	"go.airlance.org/server/internal/usecase/update"
 )
 
 const (
@@ -30,9 +36,40 @@ func Serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 	defer pool.Close()
 
-	profiles := profile.New(postgres.NewProfiles(pool), time.Now)
+	hub := update.NewHub()
+	updates := update.New(postgres.NewUpdates(pool), hub)
+	index := meili.New(cfg.MeiliURL, cfg.MeiliKey)
+	indexer := directory.NewIndexer(postgres.NewSearchQueue(pool), index, func(err error) {
+		logger.ErrorContext(ctx, "search indexing failed", slog.Any("error", err))
+	})
+	profiles := profile.New(postgres.NewProfiles(pool), profile.Notifiers{hub, indexer}, time.Now)
 	sessions := session.New(oidc.New(oidc.Config{Issuer: cfg.Issuer, Audience: cfg.Audience, JWKSURL: cfg.JWKSURL}))
-	socket := ws.NewHandler(ctx, sessions, profiles, logger)
+
+	secure, err := wireauth.NewServer(cfg.WireAuthKeys)
+	if err != nil {
+		return fmt.Errorf("wireauth: %w", err)
+	}
+
+	files, err := objectstore.New(objectstore.Config(cfg.S3))
+	if err != nil {
+		return fmt.Errorf("file storage: %w", err)
+	}
+
+	if err := files.EnsureBucket(ctx); err != nil {
+		return fmt.Errorf("file storage: %w", err)
+	}
+
+	attachments := media.New(postgres.NewMedia(pool), files, time.Now)
+	services := ws.Services{
+		Profiles:  profiles,
+		Updates:   updates,
+		Media:     attachments,
+		Directory: directory.New(index, time.Now),
+	}
+	socket := ws.NewHandler(ctx, secure, sessions, services, ws.DefaultLimits(), logger)
+
+	go indexer.Run(ctx)
+
 	server := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           httpapi.NewRouter(pool.Ping, socket),

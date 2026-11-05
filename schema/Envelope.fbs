@@ -8,6 +8,17 @@ enum MessageKind : ushort {
   ProfileGet = 4,
   ProfileSet = 5,
   ProfileData = 6,
+  Authenticate = 7,
+  Authenticated = 8,
+  UpdatesSubscribe = 9,
+  UpdatesSubscribed = 10,
+  MediaUploadRequest = 11,
+  MediaUploadTicket = 12,
+  MediaDownloadRequest = 13,
+  MediaDownloadTicket = 14,
+  Search = 15,
+  SearchResults = 16,
+  PublicProfileGet = 17,
 }
 
 table Envelope {

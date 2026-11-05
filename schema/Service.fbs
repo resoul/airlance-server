@@ -31,3 +31,57 @@ table ProfileData {
   bio: string;
   updated_at_unix: long;
 }
+
+table Authenticate {
+  access_token: string;
+}
+
+table Authenticated {
+  expires_at_unix: long;
+}
+
+table UpdatesSubscribe {
+  after_seq: ulong;
+}
+
+table UpdatesSubscribed {
+  latest_seq: ulong;
+}
+
+table MediaUploadRequest {
+  size: long;
+}
+
+table MediaUploadTicket {
+  media_id: string;
+  url: string;
+  expires_at_unix: long;
+}
+
+table MediaDownloadRequest {
+  media_id: string;
+}
+
+table MediaDownloadTicket {
+  url: string;
+  expires_at_unix: long;
+}
+
+table Search {
+  query: string;
+}
+
+table SearchPerson {
+  subject: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+}
+
+table SearchResults {
+  people: [SearchPerson];
+}
+
+table PublicProfileGet {
+  subject: string;
+}

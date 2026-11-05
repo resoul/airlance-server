@@ -46,6 +46,77 @@ func TestProfileBodiesRoundTrip(t *testing.T) {
 	}
 }
 
+func TestUpdatesBodiesRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	after, err := codec.DecodeUpdatesSubscribe(codec.EncodeUpdatesSubscribe(41))
+	if err != nil || after != 41 {
+		t.Fatalf("got %d, %v", after, err)
+	}
+
+	latest, err := codec.DecodeUpdatesSubscribed(codec.EncodeUpdatesSubscribed(42))
+	if err != nil || latest != 42 {
+		t.Fatalf("got %d, %v", latest, err)
+	}
+}
+
+func TestMediaBodiesRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	size, err := codec.DecodeMediaUploadRequest(codec.EncodeMediaUploadRequest(77))
+	if err != nil || size != 77 {
+		t.Fatalf("got %d, %v", size, err)
+	}
+
+	upload := codec.MediaUploadTicket{MediaID: "one", URL: "https://files/one", ExpiresAtUnix: 5}
+
+	gotUpload, err := codec.DecodeMediaUploadTicket(codec.EncodeMediaUploadTicket(upload))
+	if err != nil || gotUpload != upload {
+		t.Fatalf("got %+v, %v", gotUpload, err)
+	}
+
+	id, err := codec.DecodeMediaDownloadRequest(codec.EncodeMediaDownloadRequest("one"))
+	if err != nil || id != "one" {
+		t.Fatalf("got %q, %v", id, err)
+	}
+
+	download := codec.MediaDownloadTicket{URL: "https://files/one?get", ExpiresAtUnix: 6}
+
+	gotDownload, err := codec.DecodeMediaDownloadTicket(codec.EncodeMediaDownloadTicket(download))
+	if err != nil || gotDownload != download {
+		t.Fatalf("got %+v, %v", gotDownload, err)
+	}
+}
+
+func TestSearchBodiesRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	query, err := codec.DecodeSearch(codec.EncodeSearch("Шевч"))
+	if err != nil || query != "Шевч" {
+		t.Fatalf("got %q, %v", query, err)
+	}
+
+	want := []codec.SearchPerson{
+		{Subject: "a", FirstName: "Анна", LastName: "Ш", Username: "anna"},
+		{Subject: "b", FirstName: "Петро"},
+	}
+
+	got, err := codec.DecodeSearchResults(codec.EncodeSearchResults(want))
+	if err != nil || len(got) != 2 || got[0] != want[0] || got[1] != want[1] {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+
+	empty, err := codec.DecodeSearchResults(codec.EncodeSearchResults(nil))
+	if err != nil || len(empty) != 0 {
+		t.Fatalf("got %+v, %v", empty, err)
+	}
+
+	subject, err := codec.DecodePublicProfileGet(codec.EncodePublicProfileGet("a"))
+	if err != nil || subject != "a" {
+		t.Fatalf("got %q, %v", subject, err)
+	}
+}
+
 func TestBrokenFramesAreRefused(t *testing.T) {
 	t.Parallel()
 
@@ -88,5 +159,11 @@ func TestDamagedBuffersNeverPanic(t *testing.T) {
 		_, _ = codec.DecodeProfileSet(frame.Body)
 		_, _ = codec.DecodePing(frame.Body)
 		_, _ = codec.DecodeProfileData(frame.Body)
+		_, _ = codec.DecodeUpdatesSubscribe(frame.Body)
+		_, _ = codec.DecodeMediaUploadRequest(frame.Body)
+		_, _ = codec.DecodeMediaDownloadRequest(frame.Body)
+		_, _ = codec.DecodeSearch(frame.Body)
+		_, _ = codec.DecodeSearchResults(frame.Body)
+		_, _ = codec.DecodePublicProfileGet(frame.Body)
 	}
 }

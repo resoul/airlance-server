@@ -11,16 +11,20 @@ import (
 )
 
 const (
-	codeInvalid       int32 = 400
-	codeForbidden     int32 = 403
-	codeNotFound      int32 = 404
-	codeConflict      int32 = 409
-	codeUnprocessable int32 = 422
-	codeInternal      int32 = 500
+	codeInvalid         int32 = 400
+	codeUnauthenticated int32 = 401
+	codeForbidden       int32 = 403
+	codeNotFound        int32 = 404
+	codeConflict        int32 = 409
+	codeUnprocessable   int32 = 422
+	codeTooManyRequests int32 = 429
+	codeInternal        int32 = 500
+	codeUnavailable     int32 = 503
 )
 
 type Profiles interface {
 	GetOwn(ctx context.Context, principal identity.Principal) (profile.Profile, error)
+	GetPublic(ctx context.Context, principal identity.Principal, subject string) (profile.Profile, error)
 	UpdateOwn(ctx context.Context, principal identity.Principal, fields profile.Fields) (profile.Profile, error)
 }
 
@@ -46,6 +50,21 @@ func (h *Handler) dispatch(ctx context.Context, principal identity.Principal, re
 		got, err := h.profiles.UpdateOwn(ctx, principal, profile.Fields(fields))
 
 		return h.profileReply(ctx, request, got, err)
+	case codec.KindMediaUploadRequest:
+		return h.mediaUpload(ctx, principal, request)
+	case codec.KindMediaDownloadRequest:
+		return h.mediaDownload(ctx, principal, request)
+	case codec.KindSearch:
+		return h.search(ctx, principal, request)
+	case codec.KindPublicProfileGet:
+		subject, err := codec.DecodePublicProfileGet(request.Body)
+		if err != nil {
+			return failure(request, codeInvalid, "invalid body")
+		}
+
+		got, err := h.profiles.GetPublic(ctx, principal, subject)
+
+		return h.profileReply(ctx, request, got, err)
 	default:
 		return failure(request, codeInvalid, "unsupported kind")
 	}
@@ -54,11 +73,7 @@ func (h *Handler) dispatch(ctx context.Context, principal identity.Principal, re
 func (h *Handler) profileReply(ctx context.Context, request codec.Frame, got profile.Profile, err error) codec.Frame {
 	switch {
 	case err == nil:
-		return reply(request, codec.KindProfileData, codec.EncodeProfileData(codec.ProfileData{
-			Subject:       got.Subject,
-			Fields:        codec.ProfileFields(got.Fields),
-			UpdatedAtUnix: got.UpdatedAt.Unix(),
-		}))
+		return reply(request, codec.KindProfileData, profileBody(got))
 	case errors.Is(err, identity.ErrForbidden):
 		return failure(request, codeForbidden, "forbidden")
 	case errors.Is(err, profile.ErrNotFound):
@@ -76,6 +91,14 @@ func (h *Handler) profileReply(ctx context.Context, request codec.Frame, got pro
 
 		return failure(request, codeInternal, "internal")
 	}
+}
+
+func profileBody(got profile.Profile) []byte {
+	return codec.EncodeProfileData(codec.ProfileData{
+		Subject:       got.Subject,
+		Fields:        codec.ProfileFields(got.Fields),
+		UpdatedAtUnix: got.UpdatedAt.Unix(),
+	})
 }
 
 func reply(request codec.Frame, kind codec.Kind, body []byte) codec.Frame {

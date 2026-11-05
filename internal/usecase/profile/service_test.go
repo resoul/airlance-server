@@ -30,13 +30,51 @@ func (m *memoryRepository) Save(_ context.Context, next domain.Profile) error {
 	return nil
 }
 
+type countingNotifier struct {
+	notified map[string]int
+}
+
+func (n *countingNotifier) Notify(subject string) {
+	n.notified[subject]++
+}
+
 func newService() (*profile.Service, *memoryRepository) {
+	service, repository, _ := newNotifyingService()
+
+	return service, repository
+}
+
+func newNotifyingService() (*profile.Service, *memoryRepository, *countingNotifier) {
 	repository := &memoryRepository{saved: map[string]domain.Profile{}}
+	notifier := &countingNotifier{notified: map[string]int{}}
 	now := time.Unix(100, 0)
 
-	return profile.New(repository, func() time.Time {
+	return profile.New(repository, notifier, func() time.Time {
 		return now
-	}), repository
+	}), repository, notifier
+}
+
+func TestOnlyASavedChangeWakesTheOwner(t *testing.T) {
+	t.Parallel()
+
+	service, _, notifier := newNotifyingService()
+	principal := identity.Principal{Subject: "anna", Scopes: []string{domain.ScopeWrite}}
+
+	if _, err := service.UpdateOwn(context.Background(), principal, domain.Fields{}); err == nil {
+		t.Fatal("an invalid profile was accepted")
+	}
+
+	if notifier.notified["anna"] != 0 {
+		t.Fatal("woken by a refused change")
+	}
+
+	if _, err := service.UpdateOwn(context.Background(), principal, domain.Fields{FirstName: "Анна"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if notifier.notified["anna"] != 1 {
+		t.Fatalf("got %d wake-ups", notifier.notified["anna"])
+	}
 }
 
 func TestScopesDecideWhatAPersonMayDo(t *testing.T) {
@@ -75,6 +113,45 @@ func TestAPersonOnlyEverTouchesTheirOwnProfile(t *testing.T) {
 
 	if repository.saved["anna"].UpdatedAt.Unix() != 100 {
 		t.Fatalf("the clock was not used: %+v", repository.saved["anna"])
+	}
+}
+
+func TestAPublicProfileNeedsTheRightToRead(t *testing.T) {
+	t.Parallel()
+
+	service, _ := newService()
+	ctx := context.Background()
+	anna := identity.Principal{Subject: "anna", Scopes: []string{domain.ScopeWrite}}
+	petro := identity.Principal{Subject: "petro", Scopes: []string{domain.ScopeRead}}
+
+	if _, err := service.UpdateOwn(ctx, anna, domain.Fields{FirstName: "Анна"}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := service.GetPublic(ctx, petro, "anna")
+	if err != nil || got.Fields.FirstName != "Анна" {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+
+	if _, err := service.GetPublic(ctx, anna, "anna"); !errors.Is(err, identity.ErrForbidden) {
+		t.Fatalf("without the scope: %v", err)
+	}
+
+	if _, err := service.GetPublic(ctx, petro, "missing"); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("a missing person: %v", err)
+	}
+}
+
+func TestEveryNotifierIsWoken(t *testing.T) {
+	t.Parallel()
+
+	first := &countingNotifier{notified: map[string]int{}}
+	second := &countingNotifier{notified: map[string]int{}}
+
+	profile.Notifiers{first, second}.Notify("anna")
+
+	if first.notified["anna"] != 1 || second.notified["anna"] != 1 {
+		t.Fatalf("got %v and %v", first.notified, second.notified)
 	}
 }
 
