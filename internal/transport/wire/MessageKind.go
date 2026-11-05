@@ -55,6 +55,37 @@ const (
 	MessageKindContactRemove        MessageKind = 45
 	MessageKindContactsSync         MessageKind = 46
 	MessageKindContactsChanged      MessageKind = 47
+	MessageKindChatCreate           MessageKind = 48
+	MessageKindChatJoin             MessageKind = 49
+	MessageKindChatLeave            MessageKind = 50
+	MessageKindChatMembersGet       MessageKind = 51
+	MessageKindChatMembersData      MessageKind = 52
+	MessageKindChatMemberAdd        MessageKind = 53
+	MessageKindChatMemberRemove     MessageKind = 54
+	MessageKindChatSearch           MessageKind = 55
+	MessageKindChatSearchData       MessageKind = 56
+	MessageKindChatsChanged         MessageKind = 57
+	MessageKindChatResolve          MessageKind = 58
+	MessageKindChatInviteReset      MessageKind = 59
+	MessageKindUserResolve          MessageKind = 60
+	MessageKindScheduledGet         MessageKind = 61
+	MessageKindScheduledAdd         MessageKind = 62
+	MessageKindScheduledEdit        MessageKind = 63
+	MessageKindScheduledCancel      MessageKind = 64
+	MessageKindScheduledSendNow     MessageKind = 65
+	MessageKindScheduledData        MessageKind = 66
+	MessageKindScheduledChanged     MessageKind = 67
+	MessageKindAgentsGet            MessageKind = 68
+	MessageKindAgentSave            MessageKind = 69
+	MessageKindAgentDelete          MessageKind = 70
+	MessageKindAgentsData           MessageKind = 71
+	MessageKindAgentRunsGet         MessageKind = 72
+	MessageKindAgentRunsData        MessageKind = 73
+	MessageKindFoldersGet           MessageKind = 74
+	MessageKindFoldersPut           MessageKind = 75
+	MessageKindFoldersData          MessageKind = 76
+	MessageKindFoldersChanged       MessageKind = 77
+	MessageKindChatPinSet           MessageKind = 78
 )
 
 var EnumNamesMessageKind = map[MessageKind]string{
@@ -106,6 +137,37 @@ var EnumNamesMessageKind = map[MessageKind]string{
 	MessageKindContactRemove:        "ContactRemove",
 	MessageKindContactsSync:         "ContactsSync",
 	MessageKindContactsChanged:      "ContactsChanged",
+	MessageKindChatCreate:           "ChatCreate",
+	MessageKindChatJoin:             "ChatJoin",
+	MessageKindChatLeave:            "ChatLeave",
+	MessageKindChatMembersGet:       "ChatMembersGet",
+	MessageKindChatMembersData:      "ChatMembersData",
+	MessageKindChatMemberAdd:        "ChatMemberAdd",
+	MessageKindChatMemberRemove:     "ChatMemberRemove",
+	MessageKindChatSearch:           "ChatSearch",
+	MessageKindChatSearchData:       "ChatSearchData",
+	MessageKindChatsChanged:         "ChatsChanged",
+	MessageKindChatResolve:          "ChatResolve",
+	MessageKindChatInviteReset:      "ChatInviteReset",
+	MessageKindUserResolve:          "UserResolve",
+	MessageKindScheduledGet:         "ScheduledGet",
+	MessageKindScheduledAdd:         "ScheduledAdd",
+	MessageKindScheduledEdit:        "ScheduledEdit",
+	MessageKindScheduledCancel:      "ScheduledCancel",
+	MessageKindScheduledSendNow:     "ScheduledSendNow",
+	MessageKindScheduledData:        "ScheduledData",
+	MessageKindScheduledChanged:     "ScheduledChanged",
+	MessageKindAgentsGet:            "AgentsGet",
+	MessageKindAgentSave:            "AgentSave",
+	MessageKindAgentDelete:          "AgentDelete",
+	MessageKindAgentsData:           "AgentsData",
+	MessageKindAgentRunsGet:         "AgentRunsGet",
+	MessageKindAgentRunsData:        "AgentRunsData",
+	MessageKindFoldersGet:           "FoldersGet",
+	MessageKindFoldersPut:           "FoldersPut",
+	MessageKindFoldersData:          "FoldersData",
+	MessageKindFoldersChanged:       "FoldersChanged",
+	MessageKindChatPinSet:           "ChatPinSet",
 }
 
 var EnumValuesMessageKind = map[string]MessageKind{
@@ -157,6 +219,37 @@ var EnumValuesMessageKind = map[string]MessageKind{
 	"ContactRemove":        MessageKindContactRemove,
 	"ContactsSync":         MessageKindContactsSync,
 	"ContactsChanged":      MessageKindContactsChanged,
+	"ChatCreate":           MessageKindChatCreate,
+	"ChatJoin":             MessageKindChatJoin,
+	"ChatLeave":            MessageKindChatLeave,
+	"ChatMembersGet":       MessageKindChatMembersGet,
+	"ChatMembersData":      MessageKindChatMembersData,
+	"ChatMemberAdd":        MessageKindChatMemberAdd,
+	"ChatMemberRemove":     MessageKindChatMemberRemove,
+	"ChatSearch":           MessageKindChatSearch,
+	"ChatSearchData":       MessageKindChatSearchData,
+	"ChatsChanged":         MessageKindChatsChanged,
+	"ChatResolve":          MessageKindChatResolve,
+	"ChatInviteReset":      MessageKindChatInviteReset,
+	"UserResolve":          MessageKindUserResolve,
+	"ScheduledGet":         MessageKindScheduledGet,
+	"ScheduledAdd":         MessageKindScheduledAdd,
+	"ScheduledEdit":        MessageKindScheduledEdit,
+	"ScheduledCancel":      MessageKindScheduledCancel,
+	"ScheduledSendNow":     MessageKindScheduledSendNow,
+	"ScheduledData":        MessageKindScheduledData,
+	"ScheduledChanged":     MessageKindScheduledChanged,
+	"AgentsGet":            MessageKindAgentsGet,
+	"AgentSave":            MessageKindAgentSave,
+	"AgentDelete":          MessageKindAgentDelete,
+	"AgentsData":           MessageKindAgentsData,
+	"AgentRunsGet":         MessageKindAgentRunsGet,
+	"AgentRunsData":        MessageKindAgentRunsData,
+	"FoldersGet":           MessageKindFoldersGet,
+	"FoldersPut":           MessageKindFoldersPut,
+	"FoldersData":          MessageKindFoldersData,
+	"FoldersChanged":       MessageKindFoldersChanged,
+	"ChatPinSet":           MessageKindChatPinSet,
 }
 
 func (v MessageKind) String() string {

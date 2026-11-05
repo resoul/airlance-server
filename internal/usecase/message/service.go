@@ -20,6 +20,17 @@ type Repository interface {
 	Send(ctx context.Context, next domain.Message) (stored domain.Message, members []string, created bool, err error)
 	History(ctx context.Context, chatID, subject string, before int64, limit int) ([]domain.Message, error)
 	Chats(ctx context.Context, subject string, before int64, limit int) ([]domain.Chat, error)
+	Chat(ctx context.Context, chatID, subject string) (domain.Chat, error)
+	Create(ctx context.Context, next domain.NewChat, people []string) (string, []string, error)
+	Join(ctx context.Context, code, subject string, now time.Time) (string, []string, error)
+	IsMember(ctx context.Context, chatID, subject string) (bool, error)
+	AddMember(ctx context.Context, chatID, actor, subject string, role domain.Role, now time.Time) ([]string, error)
+	RemoveMember(ctx context.Context, chatID, actor, subject string) ([]string, error)
+	Members(ctx context.Context, chatID, subject string, limit int) ([]domain.Member, error)
+	ResetInvite(ctx context.Context, chatID, actor, token string) error
+	SetPinned(ctx context.Context, chatID, subject string, isPinned bool) error
+	CheckWrite(ctx context.Context, chatID, sender string) error
+	RoleOf(ctx context.Context, chatID, subject string) (domain.Role, bool, error)
 }
 
 type Profiles interface {
@@ -107,11 +118,20 @@ func (s *Service) Send(
 	principal identity.Principal,
 	chatID, clientID, text string,
 ) (domain.Message, error) {
+	return s.SendContent(ctx, principal, chatID, clientID, domain.Outgoing{Text: text})
+}
+
+func (s *Service) SendContent(
+	ctx context.Context,
+	principal identity.Principal,
+	chatID, clientID string,
+	outgoing domain.Outgoing,
+) (domain.Message, error) {
 	if !principal.HasScope(domain.ScopeWrite) {
 		return domain.Message{}, identity.ErrForbidden
 	}
 
-	next, err := domain.New(chatID, s.ids.Next(), principal.Subject, clientID, text, s.now())
+	next, err := domain.Compose(chatID, s.ids.Next(), principal.Subject, clientID, outgoing, s.now())
 	if err != nil {
 		return domain.Message{}, fmt.Errorf("check message: %w", err)
 	}
@@ -128,6 +148,43 @@ func (s *Service) Send(
 	}
 
 	return stored, nil
+}
+
+func (s *Service) Deliver(ctx context.Context, delivery domain.Delivery) (domain.Message, error) {
+	next, err := domain.New(delivery.ChatID, s.ids.Next(), delivery.Owner, delivery.ClientID, delivery.Text, s.now())
+	if err != nil {
+		return domain.Message{}, fmt.Errorf("check message: %w", err)
+	}
+
+	next.AgentID, next.AgentName = delivery.AgentID, delivery.AgentName
+
+	stored, members, created, err := s.repository.Send(ctx, next)
+	if err != nil {
+		return domain.Message{}, fmt.Errorf("deliver message: %w", err)
+	}
+
+	if created {
+		s.wake(members)
+	}
+
+	return stored, nil
+}
+
+func (s *Service) CheckWrite(ctx context.Context, chatID, sender string) error {
+	if err := s.repository.CheckWrite(ctx, chatID, sender); err != nil {
+		return fmt.Errorf("check rights: %w", err)
+	}
+
+	return nil
+}
+
+func (s *Service) RoleOf(ctx context.Context, chatID, subject string) (domain.Role, bool, error) {
+	role, isMember, err := s.repository.RoleOf(ctx, chatID, subject)
+	if err != nil {
+		return 0, false, fmt.Errorf("read role: %w", err)
+	}
+
+	return role, isMember, nil
 }
 
 func (s *Service) History(

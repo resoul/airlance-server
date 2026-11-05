@@ -17,6 +17,10 @@ type memoryRepository struct {
 	stories map[string]bool
 }
 
+func (m *memoryRepository) IsChatMedia(context.Context, string, string) (bool, error) {
+	return false, nil
+}
+
 func (m *memoryRepository) IsVisibleStoryMedia(_ context.Context, id, _ string, _ time.Time) (bool, error) {
 	return m.stories[id], nil
 }

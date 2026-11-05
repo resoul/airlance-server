@@ -6,7 +6,10 @@ import (
 	"go.airlance.org/server/internal/transport/wire"
 )
 
-const maxListItems = 1024
+const (
+	maxListItems   = 1024
+	maxAttachments = 64
+)
 
 const (
 	KindChatOpenDirect = Kind(wire.MessageKindChatOpenDirect)
@@ -26,6 +29,27 @@ type MessageData struct {
 	ClientID     string
 	Text         string
 	SentAtUnixMs int64
+	FirstName    string
+	LastName     string
+	PhotoMediaID string
+	VideoMediaID string
+	AgentName    string
+	ForwardName  string
+	Attachments  []Attachment
+}
+
+type Attachment struct {
+	Kind         int32
+	MediaID      string
+	ThumbMediaID string
+	Name         string
+	Size         int64
+	Width        int32
+	Height       int32
+	DurationMs   int32
+	Waveform     []byte
+	Title        string
+	Performer    string
 }
 
 type ChatData struct {
@@ -37,12 +61,23 @@ type ChatData struct {
 	PeerPhotoMediaID string
 	PeerVideoMediaID string
 	Last             *MessageData
+	Kind             int32
+	Title            string
+	About            string
+	Link             string
+	InviteToken      string
+	MemberCount      int32
+	Role             int32
+	IsMember         bool
+	IsPinned         bool
 }
 
 type MessageSend struct {
-	ChatID   string
-	ClientID string
-	Text     string
+	ChatID      string
+	ClientID    string
+	Text        string
+	ForwardName string
+	Attachments []Attachment
 }
 
 type HistoryGet struct {
@@ -77,9 +112,11 @@ func DecodeMessageSend(body []byte) (MessageSend, error) {
 	err := safely(func() {
 		table := wire.GetRootAsMessageSend(body, 0)
 		send = MessageSend{
-			ChatID:   string(table.ChatId()),
-			ClientID: string(table.ClientId()),
-			Text:     string(table.Text()),
+			ChatID:      string(table.ChatId()),
+			ClientID:    string(table.ClientId()),
+			Text:        string(table.Text()),
+			ForwardName: string(table.ForwardName()),
+			Attachments: readSendAttachments(table),
 		}
 	})
 
@@ -91,7 +128,11 @@ func EncodeMessageSend(send MessageSend) []byte {
 	chat := builder.CreateString(send.ChatID)
 	client := builder.CreateString(send.ClientID)
 	text := builder.CreateString(send.Text)
+	forward := builder.CreateString(send.ForwardName)
+	attachments := buildAttachments(builder, send.Attachments, wire.MessageSendStartAttachmentsVector)
 	wire.MessageSendStart(builder)
+	wire.MessageSendAddForwardName(builder, forward)
+	wire.MessageSendAddAttachments(builder, attachments)
 	wire.MessageSendAddChatId(builder, chat)
 	wire.MessageSendAddClientId(builder, client)
 	wire.MessageSendAddText(builder, text)
@@ -147,15 +188,131 @@ func buildMessage(builder *flatbuffers.Builder, data MessageData) flatbuffers.UO
 	sender := builder.CreateString(data.Sender)
 	client := builder.CreateString(data.ClientID)
 	text := builder.CreateString(data.Text)
+	first := builder.CreateString(data.FirstName)
+	last := builder.CreateString(data.LastName)
+	photo := builder.CreateString(data.PhotoMediaID)
+	video := builder.CreateString(data.VideoMediaID)
+	agentName := builder.CreateString(data.AgentName)
+	forward := builder.CreateString(data.ForwardName)
+	attachments := buildAttachments(builder, data.Attachments, wire.MessageDataStartAttachmentsVector)
 	wire.MessageDataStart(builder)
+	wire.MessageDataAddForwardName(builder, forward)
+	wire.MessageDataAddAttachments(builder, attachments)
+	wire.MessageDataAddAgentName(builder, agentName)
 	wire.MessageDataAddChatId(builder, chat)
 	wire.MessageDataAddMessageId(builder, data.MessageID)
 	wire.MessageDataAddSender(builder, sender)
 	wire.MessageDataAddClientId(builder, client)
 	wire.MessageDataAddText(builder, text)
 	wire.MessageDataAddSentAtUnixMs(builder, data.SentAtUnixMs)
+	wire.MessageDataAddSenderFirstName(builder, first)
+	wire.MessageDataAddSenderLastName(builder, last)
+	wire.MessageDataAddSenderPhotoMediaId(builder, photo)
+	wire.MessageDataAddSenderVideoMediaId(builder, video)
 
 	return wire.MessageDataEnd(builder)
+}
+
+func buildAttachments(
+	builder *flatbuffers.Builder,
+	attachments []Attachment,
+	start func(*flatbuffers.Builder, int) flatbuffers.UOffsetT,
+) flatbuffers.UOffsetT {
+	offsets := make([]flatbuffers.UOffsetT, len(attachments))
+
+	for index, next := range attachments {
+		media := builder.CreateString(next.MediaID)
+		thumb := builder.CreateString(next.ThumbMediaID)
+		name := builder.CreateString(next.Name)
+		waveform := builder.CreateByteVector(next.Waveform)
+		title := builder.CreateString(next.Title)
+		performer := builder.CreateString(next.Performer)
+		wire.MessageAttachmentStart(builder)
+		wire.MessageAttachmentAddKind(builder, next.Kind)
+		wire.MessageAttachmentAddMediaId(builder, media)
+		wire.MessageAttachmentAddThumbMediaId(builder, thumb)
+		wire.MessageAttachmentAddName(builder, name)
+		wire.MessageAttachmentAddSize(builder, next.Size)
+		wire.MessageAttachmentAddWidth(builder, next.Width)
+		wire.MessageAttachmentAddHeight(builder, next.Height)
+		wire.MessageAttachmentAddDurationMs(builder, next.DurationMs)
+		wire.MessageAttachmentAddWaveform(builder, waveform)
+		wire.MessageAttachmentAddTitle(builder, title)
+		wire.MessageAttachmentAddPerformer(builder, performer)
+		offsets[index] = wire.MessageAttachmentEnd(builder)
+	}
+
+	start(builder, len(offsets))
+
+	for index := len(offsets) - 1; index >= 0; index-- {
+		builder.PrependUOffsetT(offsets[index])
+	}
+
+	return builder.EndVector(len(offsets))
+}
+
+func readAttachment(row *wire.MessageAttachment) Attachment {
+	return Attachment{
+		Kind:         row.Kind(),
+		MediaID:      string(row.MediaId()),
+		ThumbMediaID: string(row.ThumbMediaId()),
+		Name:         string(row.Name()),
+		Size:         row.Size(),
+		Width:        row.Width(),
+		Height:       row.Height(),
+		DurationMs:   row.DurationMs(),
+		Waveform:     append([]byte(nil), row.WaveformBytes()...),
+		Title:        string(row.Title()),
+		Performer:    string(row.Performer()),
+	}
+}
+
+func readSendAttachments(table *wire.MessageSend) []Attachment {
+	if table.AttachmentsLength() > maxAttachments {
+		panic("too many attachments")
+	}
+
+	if table.AttachmentsLength() == 0 {
+		return nil
+	}
+
+	attachments := make([]Attachment, table.AttachmentsLength())
+
+	var row wire.MessageAttachment
+
+	for index := range attachments {
+		if !table.Attachments(&row, index) {
+			panic("attachment")
+		}
+
+		attachments[index] = readAttachment(&row)
+	}
+
+	return attachments
+}
+
+func readDataAttachments(table *wire.MessageData) []Attachment {
+	if table.AttachmentsLength() > maxAttachments {
+		panic("too many attachments")
+	}
+
+	if table.AttachmentsLength() == 0 {
+		return nil
+	}
+
+	attachments := make([]Attachment, table.AttachmentsLength())
+
+	var row wire.MessageAttachment
+
+	for index := range attachments {
+		if !table.Attachments(&row, index) {
+			panic("attachment")
+		}
+
+		attachments[index] = readAttachment(&row)
+	}
+
+	return attachments
 }
 
 func readMessage(table *wire.MessageData) MessageData {
@@ -166,6 +323,13 @@ func readMessage(table *wire.MessageData) MessageData {
 		ClientID:     string(table.ClientId()),
 		Text:         string(table.Text()),
 		SentAtUnixMs: table.SentAtUnixMs(),
+		FirstName:    string(table.SenderFirstName()),
+		LastName:     string(table.SenderLastName()),
+		PhotoMediaID: string(table.SenderPhotoMediaId()),
+		VideoMediaID: string(table.SenderVideoMediaId()),
+		AgentName:    string(table.AgentName()),
+		ForwardName:  string(table.ForwardName()),
+		Attachments:  readDataAttachments(table),
 	}
 }
 
@@ -199,7 +363,20 @@ func buildChat(builder *flatbuffers.Builder, data ChatData) flatbuffers.UOffsetT
 	username := builder.CreateString(data.PeerUsername)
 	photo := builder.CreateString(data.PeerPhotoMediaID)
 	video := builder.CreateString(data.PeerVideoMediaID)
+	title := builder.CreateString(data.Title)
+	about := builder.CreateString(data.About)
+	link := builder.CreateString(data.Link)
+	invite := builder.CreateString(data.InviteToken)
 	wire.ChatDataStart(builder)
+	wire.ChatDataAddKind(builder, data.Kind)
+	wire.ChatDataAddTitle(builder, title)
+	wire.ChatDataAddAbout(builder, about)
+	wire.ChatDataAddLink(builder, link)
+	wire.ChatDataAddInviteToken(builder, invite)
+	wire.ChatDataAddMemberCount(builder, data.MemberCount)
+	wire.ChatDataAddRole(builder, data.Role)
+	wire.ChatDataAddIsMember(builder, data.IsMember)
+	wire.ChatDataAddIsPinned(builder, data.IsPinned)
 	wire.ChatDataAddChatId(builder, chat)
 	wire.ChatDataAddPeerSubject(builder, subject)
 	wire.ChatDataAddPeerFirstName(builder, first)
@@ -223,6 +400,15 @@ func readChat(table *wire.ChatData) ChatData {
 		PeerUsername:     string(table.PeerUsername()),
 		PeerPhotoMediaID: string(table.PeerPhotoMediaId()),
 		PeerVideoMediaID: string(table.PeerVideoMediaId()),
+		Kind:             table.Kind(),
+		Title:            string(table.Title()),
+		About:            string(table.About()),
+		Link:             string(table.Link()),
+		InviteToken:      string(table.InviteToken()),
+		MemberCount:      table.MemberCount(),
+		Role:             table.Role(),
+		IsMember:         table.IsMember(),
+		IsPinned:         table.IsPinned(),
 	}
 
 	if last := table.LastMessage(nil); last != nil {

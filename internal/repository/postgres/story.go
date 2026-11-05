@@ -17,6 +17,7 @@ import (
 
 const partnersOf = `
 	SELECT o.subject FROM chat_members m
+	JOIN chats c ON c.id = m.chat_id AND c.kind = 0
 	JOIN chat_members o ON o.chat_id = m.chat_id AND o.subject <> m.subject
 	WHERE m.subject = $1`
 
@@ -125,7 +126,7 @@ func (r *Stories) Feed(ctx context.Context, viewer string, now time.Time, limit 
 		SELECT `+storyColumns+`,
 			EXISTS (SELECT 1 FROM story_views v WHERE v.story_id = s.id AND v.viewer = $1),
 			CASE WHEN s.owner = $1 THEN (SELECT count(*) FROM story_views v WHERE v.story_id = s.id) ELSE 0 END,
-			s.owner <> $1 AND (COALESCE(q.photos, 0) = 2 OR (q.photos = 1 AND t.owner IS NULL))
+			s.owner <> $1 AND (COALESCE(q.photos, 0) = 2 OR (COALESCE(q.photos, 0) = 1 AND t.owner IS NULL))
 		FROM stories s LEFT JOIN profiles p ON p.subject = s.owner
 		LEFT JOIN profile_privacy q ON q.subject = s.owner
 		LEFT JOIN contacts t ON t.owner = s.owner AND t.contact = $1
@@ -176,6 +177,7 @@ func (r *Stories) View(ctx context.Context, id, viewer string, now time.Time) er
 		WHERE s.id = $1 AND s.expires_at > $3
 			AND (s.owner = $2 OR s.owner IN (
 				SELECT o.subject FROM chat_members m
+				JOIN chats c ON c.id = m.chat_id AND c.kind = 0
 				JOIN chat_members o ON o.chat_id = m.chat_id AND o.subject <> m.subject
 				WHERE m.subject = $2
 			))

@@ -7,16 +7,17 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
-	"net/http"
 	"os"
 	"os/signal"
-	"strings"
 	"syscall"
 	"time"
 
+	_ "time/tzdata" // the image has no time zone files
+
+	"github.com/spf13/cobra"
+
 	"go.airlance.org/server/internal/bootstrap"
 	"go.airlance.org/server/internal/infrastructure/config"
-	"go.airlance.org/server/internal/infrastructure/database"
 )
 
 const healthTimeout = 5 * time.Second
@@ -25,7 +26,7 @@ func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
-	err := run(ctx, os.Args[1:], logger)
+	err := newRootCommand(logger).ExecuteContext(ctx)
 
 	stop()
 
@@ -35,32 +36,52 @@ func main() {
 	}
 }
 
-func run(ctx context.Context, args []string, logger *slog.Logger) error {
-	command := "serve"
-	if len(args) > 0 {
-		command = args[0]
+func newRootCommand(logger *slog.Logger) *cobra.Command {
+	serve := func(cmd *cobra.Command, _ []string) error {
+		cfg, err := config.Load(os.Getenv)
+		if err != nil {
+			return err
+		}
+
+		return bootstrap.Serve(cmd.Context(), cfg, logger)
 	}
 
-	switch command {
-	case "healthcheck":
-		return healthcheck(ctx)
-	case "wireauth-public":
-		return printWireAuthPublic()
+	root := &cobra.Command{
+		Use:           "airlance-server",
+		Short:         "The Airlance messenger server",
+		Args:          cobra.NoArgs,
+		SilenceUsage:  true,
+		SilenceErrors: true,
+		RunE:          serve,
 	}
+	root.CompletionOptions.DisableDefaultCmd = true
+	root.AddCommand(
+		&cobra.Command{Use: "serve", Short: "Run the server (the default)", Args: cobra.NoArgs, RunE: serve},
+		newMigrateCommand(),
+		newSeedCommand(logger),
+		&cobra.Command{
+			Use:   "healthcheck",
+			Short: "Ask the running server whether it is ready",
+			Args:  cobra.NoArgs,
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return healthcheck(cmd.Context())
+			},
+		},
+		&cobra.Command{
+			Use:   "wireauth-public",
+			Short: "Print the public WireAuth keys",
+			Args:  cobra.NoArgs,
+			RunE: func(*cobra.Command, []string) error {
+				return printWireAuthPublic()
+			},
+		},
+	)
 
-	cfg, err := config.Load(os.Getenv)
-	if err != nil {
-		return err
-	}
+	return root
+}
 
-	switch command {
-	case "serve":
-		return bootstrap.Serve(ctx, cfg, logger)
-	case "migrate":
-		return database.Migrate(ctx, cfg.DatabaseURL)
-	default:
-		return fmt.Errorf("unknown command %q: serve, migrate, healthcheck or wireauth-public", command)
-	}
+func needsSubcommand(cmd *cobra.Command, _ []string) error {
+	return fmt.Errorf("%s needs a subcommand, see --help", cmd.Name())
 }
 
 func printWireAuthPublic() error {
@@ -76,37 +97,6 @@ func printWireAuthPublic() error {
 		}
 
 		fmt.Printf("%d %s\n", id, base64.StdEncoding.EncodeToString(public))
-	}
-
-	return nil
-}
-
-func healthcheck(ctx context.Context) error {
-	addr := os.Getenv("AIRLANCE_SERVER_ADDR")
-	if addr == "" {
-		addr = "127.0.0.1:8090"
-	}
-
-	if _, port, found := strings.Cut(addr, ":"); found {
-		addr = "127.0.0.1:" + port
-	}
-
-	ctx, cancel := context.WithTimeout(ctx, healthTimeout)
-	defer cancel()
-
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, "http://"+addr+"/health/ready", http.NoBody)
-	if err != nil {
-		return fmt.Errorf("build request: %w", err)
-	}
-
-	response, err := http.DefaultClient.Do(request)
-	if err != nil {
-		return fmt.Errorf("health request: %w", err)
-	}
-	defer response.Body.Close()
-
-	if response.StatusCode != http.StatusOK {
-		return errors.New("not ready")
 	}
 
 	return nil

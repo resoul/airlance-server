@@ -103,6 +103,17 @@ func (h *Handler) dispatch(ctx context.Context, principal identity.Principal, re
 		return h.historyGet(ctx, principal, request)
 	case codec.KindChatsGet:
 		return h.chatsGet(ctx, principal, request)
+	case codec.KindScheduledGet, codec.KindScheduledAdd, codec.KindScheduledEdit, codec.KindScheduledCancel,
+		codec.KindScheduledSendNow:
+		return h.schedulerRequest(ctx, principal, request)
+	case codec.KindFoldersGet, codec.KindFoldersPut:
+		return h.foldersRequest(ctx, principal, request)
+	case codec.KindAgentsGet, codec.KindAgentSave, codec.KindAgentDelete, codec.KindAgentRunsGet:
+		return h.agentRequest(ctx, principal, request)
+	case codec.KindChatCreate, codec.KindChatJoin, codec.KindChatLeave, codec.KindChatMembersGet,
+		codec.KindChatMemberAdd, codec.KindChatMemberRemove, codec.KindChatSearch, codec.KindChatResolve,
+		codec.KindChatInviteReset, codec.KindUserResolve, codec.KindChatPinSet:
+		return h.groupRequest(ctx, principal, request)
 	case codec.KindPublicProfileGet:
 		subject, err := codec.DecodePublicProfileGet(request.Body)
 		if err != nil {

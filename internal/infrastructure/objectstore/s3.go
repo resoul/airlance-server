@@ -1,6 +1,7 @@
 package objectstore
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"net/http"
@@ -95,6 +96,17 @@ func (s *Store) DownloadURL(ctx context.Context, id string, ttl time.Duration) (
 	}
 
 	return signed.String(), nil
+}
+
+func (s *Store) Put(ctx context.Context, id string, data []byte) error {
+	_, err := s.internal.PutObject(
+		ctx, s.bucket, id, bytes.NewReader(data), int64(len(data)), minio.PutObjectOptions{ContentType: "image/jpeg"},
+	)
+	if err != nil {
+		return fmt.Errorf("put object: %w", err)
+	}
+
+	return nil
 }
 
 func (s *Store) Remove(ctx context.Context, id string) error {

@@ -39,7 +39,7 @@ func openMessages(t *testing.T) (context.Context, *pgxpool.Pool) {
 	}
 	t.Cleanup(pool.Close)
 
-	_, err = pool.Exec(ctx, "TRUNCATE profiles, updates, update_heads, search_queue, messages, chat_members, chats")
+	_, err = pool.Exec(ctx, "TRUNCATE profiles, updates, update_heads, search_queue, messages, chat_members, chats CASCADE")
 	if err != nil {
 		t.Fatal(err)
 	}

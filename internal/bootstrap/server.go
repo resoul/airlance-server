@@ -17,12 +17,15 @@ import (
 	"go.airlance.org/server/internal/transport/httpapi"
 	"go.airlance.org/server/internal/transport/wireauth"
 	"go.airlance.org/server/internal/transport/ws"
+	"go.airlance.org/server/internal/usecase/agent"
 	"go.airlance.org/server/internal/usecase/contact"
 	"go.airlance.org/server/internal/usecase/directory"
+	"go.airlance.org/server/internal/usecase/folder"
 	"go.airlance.org/server/internal/usecase/media"
 	"go.airlance.org/server/internal/usecase/message"
 	"go.airlance.org/server/internal/usecase/privacy"
 	"go.airlance.org/server/internal/usecase/profile"
+	"go.airlance.org/server/internal/usecase/scheduled"
 	"go.airlance.org/server/internal/usecase/session"
 	"go.airlance.org/server/internal/usecase/story"
 	"go.airlance.org/server/internal/usecase/update"
@@ -45,6 +48,9 @@ func Serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	index := meili.New(cfg.MeiliURL, cfg.MeiliKey)
 	indexer := directory.NewIndexer(postgres.NewSearchQueue(pool), index, func(err error) {
 		logger.ErrorContext(ctx, "search indexing failed", slog.Any("error", err))
+	})
+	wakes := postgres.NewWakes(pool, func(err error) {
+		logger.ErrorContext(ctx, "update wake-ups failed", slog.Any("error", err))
 	})
 	guard := privacy.New(postgres.NewPrivacy(pool), hub, time.Now)
 	profiles := profile.New(
@@ -74,6 +80,21 @@ func Serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	stories := story.New(postgres.NewStories(pool), postgres.NewMedia(pool), files, hub, time.Now, func(err error) {
 		logger.ErrorContext(ctx, "story cleanup failed", slog.Any("error", err))
 	})
+	messaging := message.New(
+		postgres.NewMessages(pool),
+		postgres.NewProfiles(pool),
+		guard,
+		hub,
+		message.NewIDs(0, time.Now),
+		time.Now,
+	)
+	scheduler := scheduled.New(postgres.NewScheduled(pool), messaging, hub, time.Now, func(err error) {
+		logger.ErrorContext(ctx, "scheduled messages failed", slog.Any("error", err))
+	})
+	agents := agent.New(postgres.NewAgents(pool), messaging, time.Now, func(err error) {
+		logger.ErrorContext(ctx, "agents failed", slog.Any("error", err))
+	})
+	finder := directory.New(index, guard, postgres.NewMessages(pool), time.Now)
 	services := ws.Services{
 		Profiles:  profiles,
 		Updates:   updates,
@@ -81,24 +102,27 @@ func Serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Stories:   stories,
 		Privacy:   guard,
 		Contacts:  contact.New(postgres.NewContacts(pool), postgres.NewPrivacy(pool), postgres.NewProfiles(pool), hub, time.Now),
-		Directory: directory.New(index, guard, time.Now),
-		Messaging: message.New(
-			postgres.NewMessages(pool),
-			postgres.NewProfiles(pool),
-			guard,
-			hub,
-			message.NewIDs(0, time.Now),
-			time.Now,
-		),
+		Directory: finder,
+		Messaging: messaging,
+		Scheduler: scheduler,
+		Agents:    agents,
+		Folders:   folder.New(postgres.NewFolders(pool), hub, time.Now),
 	}
 	socket := ws.NewHandler(ctx, secure, sessions, services, ws.DefaultLimits(), logger)
 
+	go wakes.Run(ctx, hub.Notify)
 	go indexer.Run(ctx)
 	go stories.Run(ctx)
+	go scheduler.Run(ctx)
+	go agents.Run(ctx)
 
 	server := &http.Server{
-		Addr:              cfg.Addr,
-		Handler:           httpapi.NewRouter(pool.Ping, socket),
+		Addr: cfg.Addr,
+		Handler: httpapi.NewRouter(pool.Ping, socket, httpapi.Links{
+			Previews:   finder,
+			AppleAppID: cfg.AppleAppID,
+			Logger:     logger,
+		}, httpapi.Hooks{Receiver: agents, Logger: logger}),
 		ReadHeaderTimeout: readHeaderTimeout,
 	}
 

@@ -83,7 +83,7 @@ var reader = identity.Principal{Subject: "anna", Scopes: []string{profile.ScopeR
 func newService(index *fakeIndex) *directory.Service {
 	now := time.Unix(100, 0)
 
-	return directory.New(index, noBlockers{}, func() time.Time {
+	return directory.New(index, noBlockers{}, nil, func() time.Time {
 		return now
 	})
 }
@@ -139,7 +139,7 @@ func TestSearchesAreLimitedPerPersonAndThenAllowedAgain(t *testing.T) {
 	t.Parallel()
 
 	now := time.Unix(100, 0)
-	service := directory.New(&fakeIndex{}, noBlockers{}, func() time.Time {
+	service := directory.New(&fakeIndex{}, noBlockers{}, nil, func() time.Time {
 		return now
 	})
 	ctx := context.Background()

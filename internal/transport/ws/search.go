@@ -7,11 +7,15 @@ import (
 
 	"go.airlance.org/server/internal/domain/directory"
 	"go.airlance.org/server/internal/domain/identity"
+	"go.airlance.org/server/internal/domain/message"
 	"go.airlance.org/server/internal/transport/codec"
 )
 
 type Directory interface {
 	Search(ctx context.Context, principal identity.Principal, query string) ([]directory.Person, error)
+	SearchChats(ctx context.Context, principal identity.Principal, query string) ([]message.Chat, error)
+	ResolveChat(ctx context.Context, principal identity.Principal, code string) (message.Chat, error)
+	ResolveUser(ctx context.Context, principal identity.Principal, username string) (directory.Person, error)
 }
 
 func (h *Handler) search(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {

@@ -16,6 +16,7 @@ var (
 	ErrInvalidQuery      = errors.New("invalid search query")
 	ErrTooManySearches   = errors.New("too many searches")
 	ErrSearchUnavailable = errors.New("search unavailable")
+	ErrNotFound          = errors.New("person not found")
 )
 
 type Person struct {

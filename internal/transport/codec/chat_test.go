@@ -2,6 +2,7 @@ package codec_test
 
 import (
 	"math/rand/v2"
+	"reflect"
 	"testing"
 
 	"go.airlance.org/server/internal/transport/codec"
@@ -18,7 +19,7 @@ func TestChatRequestsRoundTrip(t *testing.T) {
 	send := codec.MessageSend{ChatID: "c", ClientID: "local", Text: "привет"}
 
 	gotSend, err := codec.DecodeMessageSend(codec.EncodeMessageSend(send))
-	if err != nil || gotSend != send {
+	if err != nil || !reflect.DeepEqual(gotSend, send) {
 		t.Fatalf("got %+v, %v", gotSend, err)
 	}
 
@@ -48,12 +49,12 @@ func TestChatRepliesRoundTrip(t *testing.T) {
 	}
 
 	got, err := codec.DecodeMessageData(codec.EncodeMessageData(message))
-	if err != nil || got != message {
+	if err != nil || !reflect.DeepEqual(got, message) {
 		t.Fatalf("got %+v, %v", got, err)
 	}
 
 	history, err := codec.DecodeHistoryData(codec.EncodeHistoryData([]codec.MessageData{message, {ChatID: "c", MessageID: 6}}))
-	if err != nil || len(history) != 2 || history[0] != message || history[1].MessageID != 6 {
+	if err != nil || len(history) != 2 || !reflect.DeepEqual(history[0], message) || history[1].MessageID != 6 {
 		t.Fatalf("got %+v, %v", history, err)
 	}
 
@@ -65,7 +66,7 @@ func TestChatRepliesRoundTrip(t *testing.T) {
 	withLast := codec.ChatData{ChatID: "c", PeerSubject: "p", PeerFirstName: "Петро", PeerUsername: "petro", Last: &message}
 
 	chat, err := codec.DecodeChatData(codec.EncodeChatData(withLast))
-	if err != nil || chat.PeerFirstName != "Петро" || chat.Last == nil || *chat.Last != message {
+	if err != nil || chat.PeerFirstName != "Петро" || chat.Last == nil || !reflect.DeepEqual(*chat.Last, message) {
 		t.Fatalf("got %+v, %v", chat, err)
 	}
 
@@ -106,5 +107,26 @@ func TestDamagedChatBodiesNeverPanic(t *testing.T) {
 		_, _ = codec.DecodeHistoryData(damaged)
 		_, _ = codec.DecodeChatData(damaged)
 		_, _ = codec.DecodeChatsData(damaged)
+	}
+}
+
+func TestAttachmentsSurviveTheWire(t *testing.T) {
+	t.Parallel()
+
+	send := codec.MessageSend{ChatID: "c", ClientID: "l", ForwardName: "Канал", Attachments: []codec.Attachment{{
+		Kind: 5, MediaID: "m", ThumbMediaID: "t", Name: "song.mp3", Size: 9, Width: 1, Height: 2, DurationMs: 3,
+		Waveform: []byte{4, 5}, Title: "Песня", Performer: "Группа",
+	}}}
+
+	got, err := codec.DecodeMessageSend(codec.EncodeMessageSend(send))
+	if err != nil || !reflect.DeepEqual(got, send) {
+		t.Fatalf("got %+v, %v", got, err)
+	}
+
+	data := codec.MessageData{ChatID: "c", ForwardName: "Канал", Attachments: send.Attachments}
+
+	back, err := codec.DecodeMessageData(codec.EncodeMessageData(data))
+	if err != nil || !reflect.DeepEqual(back, data) {
+		t.Fatalf("got %+v, %v", back, err)
 	}
 }

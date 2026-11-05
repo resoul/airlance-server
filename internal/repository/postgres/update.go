@@ -59,7 +59,7 @@ func (r *Updates) After(ctx context.Context, subject string, after uint64, limit
 			continue
 		}
 
-		if next.Kind == update.KindStories || next.Kind == update.KindContacts {
+		if next.Kind != update.KindMessage {
 			continue
 		}
 
@@ -68,7 +68,7 @@ func (r *Updates) After(ctx context.Context, subject string, after uint64, limit
 			return nil, fmt.Errorf("update %d points to a missing message", next.Seq)
 		}
 
-		next.Message = message
+		next.Message = message.ForViewer(subject)
 	}
 
 	return updates, nil
@@ -115,7 +115,7 @@ func (r *Updates) journal(
 			needsProfile = true
 		case update.KindMessage:
 			refs = append(refs, messageRef{chatID: next.Message.ChatID, id: next.Message.ID})
-		case update.KindStories, update.KindContacts:
+		case update.KindStories, update.KindContacts, update.KindChats, update.KindScheduled, update.KindFolders:
 		}
 
 		updates = append(updates, next)

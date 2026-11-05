@@ -37,7 +37,7 @@ func TestPrivacyAgainstPostgres(t *testing.T) {
 	defer pool.Close()
 
 	_, err = pool.Exec(ctx, `TRUNCATE profile_privacy, blocks, contacts, profiles, profile_photos, stories, story_views,
-		media_objects, chats, chat_members, messages, updates, update_heads, search_queue`)
+		media_objects, chats, chat_members, messages, updates, update_heads, search_queue CASCADE`)
 	if err != nil {
 		t.Fatal(err)
 	}

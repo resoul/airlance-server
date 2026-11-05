@@ -95,7 +95,7 @@ services:
   migrate:
     image: airlance-server:local
     build: {context: ..}
-    command: ["migrate"]
+    command: ["migrate", "up"]
     env_file: [.env]
     read_only: true
     security_opt: [no-new-privileges:true]

@@ -8,11 +8,24 @@ import (
 
 	"go.airlance.org/server/internal/domain/directory"
 	"go.airlance.org/server/internal/domain/identity"
+	"go.airlance.org/server/internal/domain/message"
 	"go.airlance.org/server/internal/transport/codec"
 	"go.airlance.org/server/internal/transport/ws"
 )
 
 type fakeDirectory struct{}
+
+func (fakeDirectory) ResolveChat(context.Context, identity.Principal, string) (message.Chat, error) {
+	return message.Chat{}, message.ErrChatNotFound
+}
+
+func (fakeDirectory) ResolveUser(context.Context, identity.Principal, string) (directory.Person, error) {
+	return directory.Person{}, directory.ErrNotFound
+}
+
+func (fakeDirectory) SearchChats(context.Context, identity.Principal, string) ([]message.Chat, error) {
+	return nil, nil
+}
 
 func (fakeDirectory) Search(_ context.Context, _ identity.Principal, query string) ([]directory.Person, error) {
 	switch query {

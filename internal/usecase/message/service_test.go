@@ -13,6 +13,8 @@ import (
 )
 
 type fakeRepository struct {
+	message.Repository
+
 	sent      map[string]domain.Message
 	members   []string
 	failing   bool

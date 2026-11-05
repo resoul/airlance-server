@@ -73,6 +73,26 @@ func (r *Media) IsProfileMedia(ctx context.Context, id, viewer string) (bool, er
 	return found, nil
 }
 
+func (r *Media) IsChatMedia(ctx context.Context, id, viewer string) (bool, error) {
+	var found bool
+
+	err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM message_media f
+			JOIN chats c ON c.id = f.chat_id
+			WHERE f.media_id = $1 AND (
+				c.link IS NOT NULL
+				OR EXISTS (SELECT 1 FROM chat_members m WHERE m.chat_id = f.chat_id AND m.subject = $2)
+			)
+		)`, id, viewer,
+	).Scan(&found)
+	if err != nil {
+		return false, fmt.Errorf("select chat media: %w", err)
+	}
+
+	return found, nil
+}
+
 func (r *Media) IsVisibleStoryMedia(ctx context.Context, id, viewer string, now time.Time) (bool, error) {
 	var found bool
 
@@ -86,6 +106,7 @@ func (r *Media) IsVisibleStoryMedia(ctx context.Context, id, viewer string, now 
 				)
 				AND s.owner IN (
 					SELECT o.subject FROM chat_members m
+					JOIN chats c ON c.id = m.chat_id AND c.kind = 0
 					JOIN chat_members o ON o.chat_id = m.chat_id AND o.subject <> m.subject
 					WHERE m.subject = $2
 				)

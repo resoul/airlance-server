@@ -12,7 +12,9 @@ import (
 	"go.airlance.org/server/internal/transport/ws"
 )
 
-type fakeMessaging struct{}
+type fakeMessaging struct {
+	ws.Messaging
+}
 
 func (fakeMessaging) OpenDirect(_ context.Context, _ identity.Principal, peer string) (message.Chat, error) {
 	switch peer {
@@ -51,6 +53,15 @@ func (fakeMessaging) Send(
 		Text:     text,
 		SentAt:   time.UnixMilli(1_800_000_000_123),
 	}, nil
+}
+
+func (f fakeMessaging) SendContent(
+	ctx context.Context,
+	principal identity.Principal,
+	chatID, clientID string,
+	outgoing message.Outgoing,
+) (message.Message, error) {
+	return f.Send(ctx, principal, chatID, clientID, outgoing.Text)
 }
 
 func (fakeMessaging) History(

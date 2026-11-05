@@ -110,8 +110,100 @@ func (rcv *ChatData) PeerVideoMediaId() []byte {
 	return nil
 }
 
+func (rcv *ChatData) Kind() int32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(20))
+	if o != 0 {
+		return rcv._tab.GetInt32(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutateKind(n int32) bool {
+	return rcv._tab.MutateInt32Slot(20, n)
+}
+
+func (rcv *ChatData) Title() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(22))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ChatData) About() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(24))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ChatData) Link() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(26))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ChatData) InviteToken() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(28))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ChatData) MemberCount() int32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(30))
+	if o != 0 {
+		return rcv._tab.GetInt32(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutateMemberCount(n int32) bool {
+	return rcv._tab.MutateInt32Slot(30, n)
+}
+
+func (rcv *ChatData) Role() int32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(32))
+	if o != 0 {
+		return rcv._tab.GetInt32(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutateRole(n int32) bool {
+	return rcv._tab.MutateInt32Slot(32, n)
+}
+
+func (rcv *ChatData) IsMember() bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(34))
+	if o != 0 {
+		return rcv._tab.GetBool(o + rcv._tab.Pos)
+	}
+	return false
+}
+
+func (rcv *ChatData) MutateIsMember(n bool) bool {
+	return rcv._tab.MutateBoolSlot(34, n)
+}
+
+func (rcv *ChatData) IsPinned() bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(36))
+	if o != 0 {
+		return rcv._tab.GetBool(o + rcv._tab.Pos)
+	}
+	return false
+}
+
+func (rcv *ChatData) MutateIsPinned(n bool) bool {
+	return rcv._tab.MutateBoolSlot(36, n)
+}
+
 func ChatDataStart(builder *flatbuffers.Builder) {
-	builder.StartObject(8)
+	builder.StartObject(17)
 }
 func ChatDataAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
@@ -136,6 +228,33 @@ func ChatDataAddPeerPhotoMediaId(builder *flatbuffers.Builder, peerPhotoMediaId 
 }
 func ChatDataAddPeerVideoMediaId(builder *flatbuffers.Builder, peerVideoMediaId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(7, flatbuffers.UOffsetT(peerVideoMediaId), 0)
+}
+func ChatDataAddKind(builder *flatbuffers.Builder, kind int32) {
+	builder.PrependInt32Slot(8, kind, 0)
+}
+func ChatDataAddTitle(builder *flatbuffers.Builder, title flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(9, flatbuffers.UOffsetT(title), 0)
+}
+func ChatDataAddAbout(builder *flatbuffers.Builder, about flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(10, flatbuffers.UOffsetT(about), 0)
+}
+func ChatDataAddLink(builder *flatbuffers.Builder, link flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(11, flatbuffers.UOffsetT(link), 0)
+}
+func ChatDataAddInviteToken(builder *flatbuffers.Builder, inviteToken flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(12, flatbuffers.UOffsetT(inviteToken), 0)
+}
+func ChatDataAddMemberCount(builder *flatbuffers.Builder, memberCount int32) {
+	builder.PrependInt32Slot(13, memberCount, 0)
+}
+func ChatDataAddRole(builder *flatbuffers.Builder, role int32) {
+	builder.PrependInt32Slot(14, role, 0)
+}
+func ChatDataAddIsMember(builder *flatbuffers.Builder, isMember bool) {
+	builder.PrependBoolSlot(15, isMember, false)
+}
+func ChatDataAddIsPinned(builder *flatbuffers.Builder, isPinned bool) {
+	builder.PrependBoolSlot(16, isPinned, false)
 }
 func ChatDataEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

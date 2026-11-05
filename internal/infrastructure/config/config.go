@@ -20,6 +20,7 @@ type Config struct {
 	S3           S3
 	MeiliURL     string
 	MeiliKey     string
+	AppleAppID   string
 }
 
 type S3 struct {
@@ -88,6 +89,7 @@ func Load(lookup func(string) string) (Config, error) {
 		Issuer:      strings.TrimRight(lookup("AIRLANCE_SERVER_OIDC_ISSUER"), "/"),
 		Audience:    lookup("AIRLANCE_SERVER_OIDC_AUDIENCE"),
 		JWKSURL:     lookup("AIRLANCE_SERVER_OIDC_JWKS_URL"),
+		AppleAppID:  lookup("AIRLANCE_SERVER_APPLE_APP_ID"),
 	}
 	if cfg.Addr == "" {
 		cfg.Addr = "127.0.0.1:8090"

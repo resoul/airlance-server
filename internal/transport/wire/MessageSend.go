@@ -65,8 +65,36 @@ func (rcv *MessageSend) Text() []byte {
 	return nil
 }
 
+func (rcv *MessageSend) ForwardName() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *MessageSend) Attachments(obj *MessageAttachment, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *MessageSend) AttachmentsLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
 func MessageSendStart(builder *flatbuffers.Builder) {
-	builder.StartObject(3)
+	builder.StartObject(5)
 }
 func MessageSendAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
@@ -76,6 +104,15 @@ func MessageSendAddClientId(builder *flatbuffers.Builder, clientId flatbuffers.U
 }
 func MessageSendAddText(builder *flatbuffers.Builder, text flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(2, flatbuffers.UOffsetT(text), 0)
+}
+func MessageSendAddForwardName(builder *flatbuffers.Builder, forwardName flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(forwardName), 0)
+}
+func MessageSendAddAttachments(builder *flatbuffers.Builder, attachments flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(attachments), 0)
+}
+func MessageSendStartAttachmentsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
 }
 func MessageSendEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

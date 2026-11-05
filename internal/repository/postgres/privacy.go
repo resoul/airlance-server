@@ -74,6 +74,7 @@ func (r *Privacy) Relation(ctx context.Context, viewer, target string) (domain.R
 			EXISTS (SELECT 1 FROM contacts WHERE owner = $2 AND contact = $1),
 			EXISTS (
 				SELECT 1 FROM chat_members m
+				JOIN chats c ON c.id = m.chat_id AND c.kind = 0
 				JOIN chat_members o ON o.chat_id = m.chat_id
 				WHERE m.subject = $1 AND o.subject = $2
 			),

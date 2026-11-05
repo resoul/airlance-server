@@ -110,6 +110,20 @@ table PublicProfileGet {
   subject: string;
 }
 
+table MessageAttachment {
+  kind: int;
+  media_id: string;
+  thumb_media_id: string;
+  name: string;
+  size: long;
+  width: int;
+  height: int;
+  duration_ms: int;
+  waveform: [ubyte];
+  title: string;
+  performer: string;
+}
+
 table MessageData {
   chat_id: string;
   message_id: long;
@@ -117,6 +131,13 @@ table MessageData {
   client_id: string;
   text: string;
   sent_at_unix_ms: long;
+  sender_first_name: string;
+  sender_last_name: string;
+  sender_photo_media_id: string;
+  sender_video_media_id: string;
+  agent_name: string;
+  forward_name: string;
+  attachments: [MessageAttachment];
 }
 
 table ChatData {
@@ -128,6 +149,15 @@ table ChatData {
   last_message: MessageData;
   peer_photo_media_id: string;
   peer_video_media_id: string;
+  kind: int;
+  title: string;
+  about: string;
+  link: string;
+  invite_token: string;
+  member_count: int;
+  role: int;
+  is_member: bool;
+  is_pinned: bool;
 }
 
 table ChatOpenDirect {
@@ -138,6 +168,8 @@ table MessageSend {
   chat_id: string;
   client_id: string;
   text: string;
+  forward_name: string;
+  attachments: [MessageAttachment];
 }
 
 table HistoryGet {
@@ -275,4 +307,210 @@ table ContactsSync {
 }
 
 table ContactsChanged {
+}
+
+table ChatCreate {
+  client_id: string;
+  kind: int;
+  title: string;
+  about: string;
+  link: string;
+  members: [string];
+}
+
+table ChatJoin {
+  code: string;
+}
+
+table ChatLeave {
+  chat_id: string;
+}
+
+table ChatMembersGet {
+  chat_id: string;
+}
+
+table ChatMemberData {
+  subject: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  photo_media_id: string;
+  video_media_id: string;
+  role: int;
+}
+
+table ChatMembersData {
+  members: [ChatMemberData];
+}
+
+table ChatMemberAdd {
+  chat_id: string;
+  subject: string;
+  role: int;
+}
+
+table ChatMemberRemove {
+  chat_id: string;
+  subject: string;
+}
+
+table ChatSearch {
+  query: string;
+}
+
+table ChatSearchData {
+  chats: [ChatData];
+}
+
+table ChatsChanged {
+}
+
+table ChatResolve {
+  code: string;
+}
+
+table ChatInviteReset {
+  chat_id: string;
+}
+
+table UserResolve {
+  username: string;
+}
+
+table ScheduledGet {
+}
+
+table ScheduledAdd {
+  client_id: string;
+  chat_id: string;
+  text: string;
+  send_at_unix_ms: long;
+  repeat_rule: int;
+  timezone: string;
+}
+
+table ScheduledEdit {
+  id: string;
+  text: string;
+  send_at_unix_ms: long;
+}
+
+table ScheduledCancel {
+  id: string;
+}
+
+table ScheduledSendNow {
+  id: string;
+}
+
+table ScheduledItem {
+  id: string;
+  chat_id: string;
+  client_id: string;
+  text: string;
+  send_at_unix_ms: long;
+  repeat_rule: int;
+  failure: string;
+}
+
+table ScheduledData {
+  items: [ScheduledItem];
+}
+
+table ScheduledChanged {
+}
+
+table AgentsGet {
+}
+
+table AgentSave {
+  id: string;
+  client_id: string;
+  name: string;
+  chat_id: string;
+  trigger_kind: int;
+  keyword: string;
+  hour: int;
+  minute: int;
+  weekdays: int;
+  timezone: string;
+  text: string;
+  enabled: bool;
+  rotate_webhook: bool;
+}
+
+table AgentDelete {
+  id: string;
+}
+
+table AgentData {
+  id: string;
+  client_id: string;
+  name: string;
+  chat_id: string;
+  chat_title: string;
+  trigger_kind: int;
+  keyword: string;
+  hour: int;
+  minute: int;
+  weekdays: int;
+  timezone: string;
+  text: string;
+  enabled: bool;
+  next_run_unix_ms: long;
+}
+
+table AgentsData {
+  agents: [AgentData];
+  webhook_token: string;
+}
+
+table AgentRunsGet {
+  id: string;
+}
+
+table AgentRunData {
+  status: int;
+  detail: string;
+  ran_at_unix_ms: long;
+}
+
+table AgentRunsData {
+  runs: [AgentRunData];
+}
+
+table FolderData {
+  id: string;
+  name: string;
+  emoji: string;
+  color: int;
+  categories: int;
+  exclusions: int;
+  included: [string];
+  excluded: [string];
+}
+
+table FoldersGet {
+}
+
+table FoldersPut {
+  folders: [FolderData];
+  all_chats_position: int;
+  shows_tags: bool;
+}
+
+table FoldersData {
+  folders: [FolderData];
+  all_chats_position: int;
+  shows_tags: bool;
+  revision: long;
+}
+
+table FoldersChanged {
+}
+
+table ChatPinSet {
+  chat_id: string;
+  is_pinned: bool;
 }

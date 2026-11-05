@@ -4,6 +4,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"errors"
+	"strconv"
 	"strings"
 	"time"
 	"unicode/utf8"
@@ -30,12 +31,34 @@ var (
 )
 
 type Message struct {
-	ChatID   string
-	ID       int64
-	Sender   string
-	ClientID string
-	Text     string
-	SentAt   time.Time
+	ChatID      string
+	ID          int64
+	Sender      string
+	ClientID    string
+	Text        string
+	SentAt      time.Time
+	ChatKind    Kind
+	Author      Author
+	AgentID     string
+	AgentName   string
+	ForwardName string
+	Attachments []Attachment
+}
+
+type Delivery struct {
+	Owner     string
+	ChatID    string
+	ClientID  string
+	Text      string
+	AgentID   string
+	AgentName string
+}
+
+type Author struct {
+	FirstName    string
+	LastName     string
+	PhotoMediaID string
+	VideoMediaID string
 }
 
 type Peer struct {
@@ -48,9 +71,30 @@ type Peer struct {
 }
 
 type Chat struct {
-	ID   string
-	Peer Peer
-	Last *Message
+	ID          string
+	Peer        Peer
+	Last        *Message
+	Kind        Kind
+	Title       string
+	About       string
+	Link        string
+	InviteToken string
+	MemberCount int
+	Role        Role
+	IsMember    bool
+	IsPinned    bool
+}
+
+func (m Message) ForViewer(viewer string) Message {
+	if m.ChatKind != KindChannel || m.Sender == viewer {
+		return m
+	}
+
+	m.Sender = m.ChatID
+	m.ClientID = strconv.FormatInt(m.ID, 10)
+	m.Author = Author{}
+
+	return m
 }
 
 func New(chatID string, id int64, sender, clientID, text string, now time.Time) (Message, error) {

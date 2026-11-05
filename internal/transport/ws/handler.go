@@ -44,6 +44,9 @@ type Services struct {
 	Contacts  Contacts
 	Directory Directory
 	Messaging Messaging
+	Scheduler Scheduler
+	Agents    Agents
+	Folders   Folders
 }
 
 type Handler struct {
@@ -58,6 +61,9 @@ type Handler struct {
 	contacts  Contacts
 	directory Directory
 	messaging Messaging
+	scheduler Scheduler
+	agents    Agents
+	folders   Folders
 	limits    *limiter
 	logger    *slog.Logger
 }
@@ -82,6 +88,9 @@ func NewHandler(
 		contacts:  services.Contacts,
 		directory: services.Directory,
 		messaging: services.Messaging,
+		scheduler: services.Scheduler,
+		agents:    services.Agents,
+		folders:   services.Folders,
 		limits:    newLimiter(limits),
 		logger:    logger,
 	}

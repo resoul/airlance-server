@@ -7,7 +7,7 @@ import (
 
 type Readiness func(ctx context.Context) error
 
-func NewRouter(ready Readiness, socket http.Handler) http.Handler {
+func NewRouter(ready Readiness, socket http.Handler, links Links, hooks Hooks) http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health/alive", func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -22,6 +22,8 @@ func NewRouter(ready Readiness, socket http.Handler) http.Handler {
 		w.WriteHeader(http.StatusOK)
 	})
 	mux.Handle("GET /v1/ws", socket)
+	links.register(mux)
+	hooks.register(mux)
 
 	return mux
 }

@@ -97,8 +97,76 @@ func (rcv *MessageData) MutateSentAtUnixMs(n int64) bool {
 	return rcv._tab.MutateInt64Slot(14, n)
 }
 
+func (rcv *MessageData) SenderFirstName() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *MessageData) SenderLastName() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *MessageData) SenderPhotoMediaId() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(20))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *MessageData) SenderVideoMediaId() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(22))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *MessageData) AgentName() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(24))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *MessageData) ForwardName() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(26))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *MessageData) Attachments(obj *MessageAttachment, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(28))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *MessageData) AttachmentsLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(28))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
 func MessageDataStart(builder *flatbuffers.Builder) {
-	builder.StartObject(6)
+	builder.StartObject(13)
 }
 func MessageDataAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
@@ -117,6 +185,30 @@ func MessageDataAddText(builder *flatbuffers.Builder, text flatbuffers.UOffsetT)
 }
 func MessageDataAddSentAtUnixMs(builder *flatbuffers.Builder, sentAtUnixMs int64) {
 	builder.PrependInt64Slot(5, sentAtUnixMs, 0)
+}
+func MessageDataAddSenderFirstName(builder *flatbuffers.Builder, senderFirstName flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(6, flatbuffers.UOffsetT(senderFirstName), 0)
+}
+func MessageDataAddSenderLastName(builder *flatbuffers.Builder, senderLastName flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(7, flatbuffers.UOffsetT(senderLastName), 0)
+}
+func MessageDataAddSenderPhotoMediaId(builder *flatbuffers.Builder, senderPhotoMediaId flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(8, flatbuffers.UOffsetT(senderPhotoMediaId), 0)
+}
+func MessageDataAddSenderVideoMediaId(builder *flatbuffers.Builder, senderVideoMediaId flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(9, flatbuffers.UOffsetT(senderVideoMediaId), 0)
+}
+func MessageDataAddAgentName(builder *flatbuffers.Builder, agentName flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(10, flatbuffers.UOffsetT(agentName), 0)
+}
+func MessageDataAddForwardName(builder *flatbuffers.Builder, forwardName flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(11, flatbuffers.UOffsetT(forwardName), 0)
+}
+func MessageDataAddAttachments(builder *flatbuffers.Builder, attachments flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(12, flatbuffers.UOffsetT(attachments), 0)
+}
+func MessageDataStartAttachmentsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
 }
 func MessageDataEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

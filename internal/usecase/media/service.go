@@ -21,6 +21,7 @@ type Repository interface {
 	Get(ctx context.Context, id string) (domain.Object, error)
 	IsProfileMedia(ctx context.Context, id, viewer string) (bool, error)
 	IsVisibleStoryMedia(ctx context.Context, id, viewer string, now time.Time) (bool, error)
+	IsChatMedia(ctx context.Context, id, viewer string) (bool, error)
 }
 
 type Store interface {
@@ -98,6 +99,11 @@ func (s *Service) mayRead(ctx context.Context, id, viewer string) (bool, error) 
 	public, err := s.repository.IsProfileMedia(ctx, id, viewer)
 	if err != nil || public {
 		return public, err
+	}
+
+	inChat, err := s.repository.IsChatMedia(ctx, id, viewer)
+	if err != nil || inChat {
+		return inChat, err
 	}
 
 	return s.repository.IsVisibleStoryMedia(ctx, id, viewer, s.now())

@@ -131,6 +131,18 @@ func (h *Handler) push(ctx context.Context, l *link, principal identity.Principa
 }
 
 func updateFrame(next update.Update) codec.Frame {
+	if next.Kind == update.KindFolders {
+		return codec.Frame{Seq: next.Seq, Kind: codec.KindFoldersChanged, Body: codec.EncodeFoldersChanged()}
+	}
+
+	if next.Kind == update.KindScheduled {
+		return codec.Frame{Seq: next.Seq, Kind: codec.KindScheduledChanged, Body: codec.EncodeScheduledChanged()}
+	}
+
+	if next.Kind == update.KindChats {
+		return codec.Frame{Seq: next.Seq, Kind: codec.KindChatsChanged, Body: codec.EncodeChatsChanged()}
+	}
+
 	if next.Kind == update.KindContacts {
 		return codec.Frame{Seq: next.Seq, Kind: codec.KindContactsChanged, Body: codec.EncodeContactsChanged()}
 	}

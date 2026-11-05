@@ -33,7 +33,7 @@ func TestStoriesAgainstPostgres(t *testing.T) {
 	}
 	defer pool.Close()
 
-	_, err = pool.Exec(ctx, `TRUNCATE stories, story_views, media_objects, profiles, chats, chat_members, updates, update_heads`)
+	_, err = pool.Exec(ctx, `TRUNCATE stories, story_views, media_objects, profiles, chats, chat_members, updates, update_heads CASCADE`)
 	if err != nil {
 		t.Fatal(err)
 	}
