@@ -25,6 +25,36 @@ const (
 	MessageKindSearch               MessageKind = 15
 	MessageKindSearchResults        MessageKind = 16
 	MessageKindPublicProfileGet     MessageKind = 17
+	MessageKindChatOpenDirect       MessageKind = 18
+	MessageKindChatData             MessageKind = 19
+	MessageKindMessageSend          MessageKind = 20
+	MessageKindMessageData          MessageKind = 21
+	MessageKindHistoryGet           MessageKind = 22
+	MessageKindHistoryData          MessageKind = 23
+	MessageKindChatsGet             MessageKind = 24
+	MessageKindChatsData            MessageKind = 25
+	MessageKindProfilePhotoAdd      MessageKind = 26
+	MessageKindProfilePhotoRemove   MessageKind = 27
+	MessageKindStoryPublish         MessageKind = 28
+	MessageKindStoryData            MessageKind = 29
+	MessageKindStoriesGet           MessageKind = 30
+	MessageKindStoriesData          MessageKind = 31
+	MessageKindStoryView            MessageKind = 32
+	MessageKindStoryDelete          MessageKind = 33
+	MessageKindStoriesChanged       MessageKind = 34
+	MessageKindPrivacyGet           MessageKind = 35
+	MessageKindPrivacySet           MessageKind = 36
+	MessageKindPrivacyData          MessageKind = 37
+	MessageKindBlocksGet            MessageKind = 38
+	MessageKindBlocksData           MessageKind = 39
+	MessageKindBlockSet             MessageKind = 40
+	MessageKindContactsGet          MessageKind = 41
+	MessageKindContactsData         MessageKind = 42
+	MessageKindContactAdd           MessageKind = 43
+	MessageKindContactAddPhone      MessageKind = 44
+	MessageKindContactRemove        MessageKind = 45
+	MessageKindContactsSync         MessageKind = 46
+	MessageKindContactsChanged      MessageKind = 47
 )
 
 var EnumNamesMessageKind = map[MessageKind]string{
@@ -46,6 +76,36 @@ var EnumNamesMessageKind = map[MessageKind]string{
 	MessageKindSearch:               "Search",
 	MessageKindSearchResults:        "SearchResults",
 	MessageKindPublicProfileGet:     "PublicProfileGet",
+	MessageKindChatOpenDirect:       "ChatOpenDirect",
+	MessageKindChatData:             "ChatData",
+	MessageKindMessageSend:          "MessageSend",
+	MessageKindMessageData:          "MessageData",
+	MessageKindHistoryGet:           "HistoryGet",
+	MessageKindHistoryData:          "HistoryData",
+	MessageKindChatsGet:             "ChatsGet",
+	MessageKindChatsData:            "ChatsData",
+	MessageKindProfilePhotoAdd:      "ProfilePhotoAdd",
+	MessageKindProfilePhotoRemove:   "ProfilePhotoRemove",
+	MessageKindStoryPublish:         "StoryPublish",
+	MessageKindStoryData:            "StoryData",
+	MessageKindStoriesGet:           "StoriesGet",
+	MessageKindStoriesData:          "StoriesData",
+	MessageKindStoryView:            "StoryView",
+	MessageKindStoryDelete:          "StoryDelete",
+	MessageKindStoriesChanged:       "StoriesChanged",
+	MessageKindPrivacyGet:           "PrivacyGet",
+	MessageKindPrivacySet:           "PrivacySet",
+	MessageKindPrivacyData:          "PrivacyData",
+	MessageKindBlocksGet:            "BlocksGet",
+	MessageKindBlocksData:           "BlocksData",
+	MessageKindBlockSet:             "BlockSet",
+	MessageKindContactsGet:          "ContactsGet",
+	MessageKindContactsData:         "ContactsData",
+	MessageKindContactAdd:           "ContactAdd",
+	MessageKindContactAddPhone:      "ContactAddPhone",
+	MessageKindContactRemove:        "ContactRemove",
+	MessageKindContactsSync:         "ContactsSync",
+	MessageKindContactsChanged:      "ContactsChanged",
 }
 
 var EnumValuesMessageKind = map[string]MessageKind{
@@ -67,6 +127,36 @@ var EnumValuesMessageKind = map[string]MessageKind{
 	"Search":               MessageKindSearch,
 	"SearchResults":        MessageKindSearchResults,
 	"PublicProfileGet":     MessageKindPublicProfileGet,
+	"ChatOpenDirect":       MessageKindChatOpenDirect,
+	"ChatData":             MessageKindChatData,
+	"MessageSend":          MessageKindMessageSend,
+	"MessageData":          MessageKindMessageData,
+	"HistoryGet":           MessageKindHistoryGet,
+	"HistoryData":          MessageKindHistoryData,
+	"ChatsGet":             MessageKindChatsGet,
+	"ChatsData":            MessageKindChatsData,
+	"ProfilePhotoAdd":      MessageKindProfilePhotoAdd,
+	"ProfilePhotoRemove":   MessageKindProfilePhotoRemove,
+	"StoryPublish":         MessageKindStoryPublish,
+	"StoryData":            MessageKindStoryData,
+	"StoriesGet":           MessageKindStoriesGet,
+	"StoriesData":          MessageKindStoriesData,
+	"StoryView":            MessageKindStoryView,
+	"StoryDelete":          MessageKindStoryDelete,
+	"StoriesChanged":       MessageKindStoriesChanged,
+	"PrivacyGet":           MessageKindPrivacyGet,
+	"PrivacySet":           MessageKindPrivacySet,
+	"PrivacyData":          MessageKindPrivacyData,
+	"BlocksGet":            MessageKindBlocksGet,
+	"BlocksData":           MessageKindBlocksData,
+	"BlockSet":             MessageKindBlockSet,
+	"ContactsGet":          MessageKindContactsGet,
+	"ContactsData":         MessageKindContactsData,
+	"ContactAdd":           MessageKindContactAdd,
+	"ContactAddPhone":      MessageKindContactAddPhone,
+	"ContactRemove":        MessageKindContactRemove,
+	"ContactsSync":         MessageKindContactsSync,
+	"ContactsChanged":      MessageKindContactsChanged,
 }
 
 func (v MessageKind) String() string {

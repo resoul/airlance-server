@@ -73,8 +73,24 @@ func (rcv *SearchPerson) Username() []byte {
 	return nil
 }
 
+func (rcv *SearchPerson) PhotoMediaId() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(12))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *SearchPerson) VideoMediaId() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
 func SearchPersonStart(builder *flatbuffers.Builder) {
-	builder.StartObject(4)
+	builder.StartObject(6)
 }
 func SearchPersonAddSubject(builder *flatbuffers.Builder, subject flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(subject), 0)
@@ -87,6 +103,12 @@ func SearchPersonAddLastName(builder *flatbuffers.Builder, lastName flatbuffers.
 }
 func SearchPersonAddUsername(builder *flatbuffers.Builder, username flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(3, flatbuffers.UOffsetT(username), 0)
+}
+func SearchPersonAddPhotoMediaId(builder *flatbuffers.Builder, photoMediaId flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(4, flatbuffers.UOffsetT(photoMediaId), 0)
+}
+func SearchPersonAddVideoMediaId(builder *flatbuffers.Builder, videoMediaId flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(5, flatbuffers.UOffsetT(videoMediaId), 0)
 }
 func SearchPersonEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

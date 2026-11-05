@@ -31,12 +31,15 @@ type Client struct {
 }
 
 type document struct {
-	ID        string `json:"id"`
-	Kind      string `json:"kind"`
-	Subject   string `json:"subject"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Username  string `json:"username"`
+	ID           string `json:"id"`
+	Kind         string `json:"kind"`
+	Subject      string `json:"subject"`
+	FirstName    string `json:"first_name"`
+	LastName     string `json:"last_name"`
+	Username     string `json:"username"`
+	PhotoMediaID string `json:"photo_media_id"`
+	VideoMediaID string `json:"video_media_id"`
+	Hidden       bool   `json:"hidden"`
 }
 
 func New(url, key string) *Client {
@@ -46,8 +49,10 @@ func New(url, key string) *Client {
 func (c *Client) Configure(ctx context.Context) error {
 	return c.send(ctx, http.MethodPatch, "/indexes/"+indexName+"/settings", map[string]any{
 		"searchableAttributes": []string{"username", "first_name", "last_name"},
-		"filterableAttributes": []string{"kind"},
-		"displayedAttributes":  []string{"kind", "subject", "first_name", "last_name", "username"},
+		"filterableAttributes": []string{"kind", "hidden"},
+		"displayedAttributes": []string{
+			"kind", "subject", "first_name", "last_name", "username", "photo_media_id", "video_media_id",
+		},
 	}, nil)
 }
 
@@ -56,12 +61,15 @@ func (c *Client) Upsert(ctx context.Context, people []directory.Person) error {
 
 	for index, person := range people {
 		documents[index] = document{
-			ID:        documentID(person.Subject),
-			Kind:      kindPerson,
-			Subject:   person.Subject,
-			FirstName: person.FirstName,
-			LastName:  person.LastName,
-			Username:  person.Username,
+			ID:           documentID(person.Subject),
+			Kind:         kindPerson,
+			Subject:      person.Subject,
+			FirstName:    person.FirstName,
+			LastName:     person.LastName,
+			Username:     person.Username,
+			PhotoMediaID: person.PhotoMediaID,
+			VideoMediaID: person.VideoMediaID,
+			Hidden:       person.IsHidden,
 		}
 	}
 
@@ -76,7 +84,7 @@ func (c *Client) Search(ctx context.Context, query string, limit int) ([]directo
 	err := c.send(ctx, http.MethodPost, "/indexes/"+indexName+"/search", map[string]any{
 		"q":      query,
 		"limit":  limit,
-		"filter": "kind = " + kindPerson,
+		"filter": "kind = " + kindPerson + " AND hidden != true",
 	}, &found)
 	if err != nil {
 		return nil, err
@@ -86,10 +94,12 @@ func (c *Client) Search(ctx context.Context, query string, limit int) ([]directo
 
 	for index, hit := range found.Hits {
 		people[index] = directory.Person{
-			Subject:   hit.Subject,
-			FirstName: hit.FirstName,
-			LastName:  hit.LastName,
-			Username:  hit.Username,
+			Subject:      hit.Subject,
+			FirstName:    hit.FirstName,
+			LastName:     hit.LastName,
+			Username:     hit.Username,
+			PhotoMediaID: hit.PhotoMediaID,
+			VideoMediaID: hit.VideoMediaID,
 		}
 	}
 

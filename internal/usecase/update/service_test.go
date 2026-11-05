@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"go.airlance.org/server/internal/domain/identity"
+	"go.airlance.org/server/internal/domain/message"
 	"go.airlance.org/server/internal/domain/profile"
 	domain "go.airlance.org/server/internal/domain/update"
 	"go.airlance.org/server/internal/usecase/update"
@@ -36,13 +37,18 @@ func TestUpdatesNeedTheRightToReadTheProfile(t *testing.T) {
 	if _, err := service.After(ctx, writer, 0, 10); !errors.Is(err, identity.ErrForbidden) {
 		t.Fatalf("read without the scope: %v", err)
 	}
+
+	onlyProfile := identity.Principal{Subject: "a", Scopes: []string{profile.ScopeRead}}
+	if _, err := service.Subscribe(ctx, onlyProfile, 0); !errors.Is(err, identity.ErrForbidden) {
+		t.Fatalf("the journal also holds messages: %v", err)
+	}
 }
 
 func TestANumberTheDatabaseCannotHoldIsRefused(t *testing.T) {
 	t.Parallel()
 
 	service := update.New(emptyRepository{}, update.NewHub())
-	reader := identity.Principal{Subject: "a", Scopes: []string{profile.ScopeRead}}
+	reader := identity.Principal{Subject: "a", Scopes: []string{profile.ScopeRead, message.ScopeRead}}
 
 	if _, err := service.Subscribe(context.Background(), reader, domain.MaxSeq+1); !errors.Is(err, domain.ErrInvalidSeq) {
 		t.Fatalf("got %v", err)

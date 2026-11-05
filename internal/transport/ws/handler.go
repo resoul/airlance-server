@@ -39,7 +39,11 @@ type Services struct {
 	Profiles  Profiles
 	Updates   Updates
 	Media     Media
+	Stories   Stories
+	Privacy   Privacy
+	Contacts  Contacts
 	Directory Directory
+	Messaging Messaging
 }
 
 type Handler struct {
@@ -49,7 +53,11 @@ type Handler struct {
 	profiles  Profiles
 	updates   Updates
 	media     Media
+	stories   Stories
+	privacy   Privacy
+	contacts  Contacts
 	directory Directory
+	messaging Messaging
 	limits    *limiter
 	logger    *slog.Logger
 }
@@ -69,7 +77,11 @@ func NewHandler(
 		profiles:  services.Profiles,
 		updates:   services.Updates,
 		media:     services.Media,
+		stories:   services.Stories,
+		privacy:   services.Privacy,
+		contacts:  services.Contacts,
 		directory: services.Directory,
+		messaging: services.Messaging,
 		limits:    newLimiter(limits),
 		logger:    logger,
 	}

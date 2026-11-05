@@ -3,6 +3,7 @@ package codec_test
 import (
 	"errors"
 	"math/rand/v2"
+	"reflect"
 	"testing"
 
 	"go.airlance.org/server/internal/transport/codec"
@@ -31,18 +32,39 @@ func TestFramesRoundTrip(t *testing.T) {
 func TestProfileBodiesRoundTrip(t *testing.T) {
 	t.Parallel()
 
-	fields := codec.ProfileFields{FirstName: "Анна", LastName: "Ш", Username: "anna_s", Bio: "Привет"}
+	fields := codec.ProfileFields{
+		FirstName:    "Анна",
+		LastName:     "Ш",
+		Username:     "anna_s",
+		Bio:          "Привет",
+		Phone:        "+380",
+		PhotoMediaID: "photo",
+		VideoMediaID: "video",
+	}
 
 	gotFields, err := codec.DecodeProfileSet(codec.EncodeProfileSet(fields))
 	if err != nil || gotFields != fields {
 		t.Fatalf("got %+v, %v", gotFields, err)
 	}
 
-	data := codec.ProfileData{Subject: "s", Fields: fields, UpdatedAtUnix: 5}
+	data := codec.ProfileData{Subject: "s", Fields: fields, UpdatedAtUnix: 5, Photos: []codec.ProfilePhoto{
+		{PhotoMediaID: "p1", VideoMediaID: "v1", AddedAtUnix: 3},
+		{PhotoMediaID: "p2", AddedAtUnix: 2},
+	}}
 
 	gotData, err := codec.DecodeProfileData(codec.EncodeProfileData(data))
-	if err != nil || gotData != data {
+	if err != nil || !reflect.DeepEqual(gotData, data) {
 		t.Fatalf("got %+v, %v", gotData, err)
+	}
+
+	photo, video, err := codec.DecodeProfilePhotoAdd(codec.EncodeProfilePhotoAdd("p", "v"))
+	if err != nil || photo != "p" || video != "v" {
+		t.Fatalf("add: %q, %q, %v", photo, video, err)
+	}
+
+	removed, err := codec.DecodeProfilePhotoRemove(codec.EncodeProfilePhotoRemove("p"))
+	if err != nil || removed != "p" {
+		t.Fatalf("remove: %q, %v", removed, err)
 	}
 }
 
@@ -97,7 +119,7 @@ func TestSearchBodiesRoundTrip(t *testing.T) {
 	}
 
 	want := []codec.SearchPerson{
-		{Subject: "a", FirstName: "Анна", LastName: "Ш", Username: "anna"},
+		{Subject: "a", FirstName: "Анна", LastName: "Ш", Username: "anna", PhotoMediaID: "p", VideoMediaID: "v"},
 		{Subject: "b", FirstName: "Петро"},
 	}
 
@@ -165,5 +187,131 @@ func TestDamagedBuffersNeverPanic(t *testing.T) {
 		_, _ = codec.DecodeSearch(frame.Body)
 		_, _ = codec.DecodeSearchResults(frame.Body)
 		_, _ = codec.DecodePublicProfileGet(frame.Body)
+	}
+}
+
+func TestStoryBodiesRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	publish := codec.StoryPublish{
+		ClientID:      "c",
+		MediaID:       "m",
+		CoverMediaID:  "k",
+		IsVideo:       true,
+		LifetimeHours: 48,
+		Meta:          "{}",
+	}
+
+	gotPublish, err := codec.DecodeStoryPublish(codec.EncodeStoryPublish(publish))
+	if err != nil || gotPublish != publish {
+		t.Fatalf("publish: %+v, %v", gotPublish, err)
+	}
+
+	data := codec.StoryData{
+		StoryID:           "s",
+		ClientID:          "c",
+		OwnerSubject:      "a",
+		OwnerFirstName:    "Анна",
+		OwnerLastName:     "Ш",
+		OwnerPhotoMediaID: "p",
+		OwnerVideoMediaID: "v",
+		MediaID:           "m",
+		CoverMediaID:      "k",
+		IsVideo:           true,
+		Meta:              "{}",
+		CreatedAtUnix:     1,
+		ExpiresAtUnix:     2,
+		Seen:              true,
+		ViewCount:         3,
+	}
+
+	gotData, err := codec.DecodeStoryData(codec.EncodeStoryData(data))
+	if err != nil || gotData != data {
+		t.Fatalf("data: %+v, %v", gotData, err)
+	}
+
+	list, err := codec.DecodeStoriesData(codec.EncodeStoriesData([]codec.StoryData{data, data}))
+	if err != nil || len(list) != 2 || list[1] != data {
+		t.Fatalf("list: %+v, %v", list, err)
+	}
+
+	id, err := codec.DecodeStoryView(codec.EncodeStoryView("s"))
+	if err != nil || id != "s" {
+		t.Fatalf("view: %q, %v", id, err)
+	}
+
+	id, err = codec.DecodeStoryDelete(codec.EncodeStoryDelete("s"))
+	if err != nil || id != "s" {
+		t.Fatalf("delete: %q, %v", id, err)
+	}
+}
+
+func TestPrivacyBodiesRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	settings := codec.PrivacySettings{Phone: 2, Photos: 1, Bio: 1, Messages: 1, Search: 2}
+
+	set, err := codec.DecodePrivacySet(codec.EncodePrivacySet(settings))
+	if err != nil || set != settings {
+		t.Fatalf("set: %+v, %v", set, err)
+	}
+
+	data, err := codec.DecodePrivacyData(codec.EncodePrivacyData(settings))
+	if err != nil || data != settings {
+		t.Fatalf("data: %+v, %v", data, err)
+	}
+
+	subject, blocked, err := codec.DecodeBlockSet(codec.EncodeBlockSet("a", true))
+	if err != nil || subject != "a" || !blocked {
+		t.Fatalf("block: %q, %v, %v", subject, blocked, err)
+	}
+
+	people, err := codec.DecodeBlocksData(codec.EncodeBlocksData([]codec.SearchPerson{{Subject: "a", FirstName: "А"}}))
+	if err != nil || len(people) != 1 || people[0].FirstName != "А" {
+		t.Fatalf("blocks: %+v, %v", people, err)
+	}
+}
+
+func TestContactBodiesRoundTrip(t *testing.T) {
+	t.Parallel()
+
+	row := codec.ContactData{
+		Subject:         "a",
+		FirstName:       "Анна",
+		LastName:        "Ш",
+		Username:        "anna",
+		PhotoMediaID:    "p",
+		VideoMediaID:    "v",
+		CustomFirstName: "Аня",
+		CustomLastName:  "К",
+		Phone:           "380",
+		FromDevice:      true,
+	}
+
+	list, err := codec.DecodeContactsData(codec.EncodeContactsData([]codec.ContactData{row, row}))
+	if err != nil || len(list) != 2 || list[1] != row {
+		t.Fatalf("list: %+v, %v", list, err)
+	}
+
+	add := codec.ContactAdd{Target: "a", FirstName: "Аня", LastName: "К"}
+
+	gotAdd, err := codec.DecodeContactAdd(codec.EncodeContactAdd(add))
+	if err != nil || gotAdd != add {
+		t.Fatalf("add: %+v, %v", gotAdd, err)
+	}
+
+	gotPhone, err := codec.DecodeContactAddPhone(codec.EncodeContactAddPhone(add))
+	if err != nil || gotPhone != add {
+		t.Fatalf("add by phone: %+v, %v", gotPhone, err)
+	}
+
+	subject, err := codec.DecodeContactRemove(codec.EncodeContactRemove("a"))
+	if err != nil || subject != "a" {
+		t.Fatalf("remove: %q, %v", subject, err)
+	}
+
+	phones, err := codec.DecodeContactsSync(codec.EncodeContactsSync([]string{"1", "2"}))
+	if err != nil || len(phones) != 2 || phones[1] != "2" {
+		t.Fatalf("sync: %+v, %v", phones, err)
 	}
 }

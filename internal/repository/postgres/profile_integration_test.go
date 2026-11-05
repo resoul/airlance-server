@@ -31,7 +31,7 @@ func TestProfilesAgainstPostgres(t *testing.T) {
 	}
 	defer pool.Close()
 
-	if _, err := pool.Exec(ctx, "TRUNCATE profiles"); err != nil {
+	if _, err := pool.Exec(ctx, "TRUNCATE profiles, profile_photos"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -77,5 +77,44 @@ func TestProfilesAgainstPostgres(t *testing.T) {
 
 	if got.Fields.LastName != "Ш" || got.Fields.Username != "" {
 		t.Fatalf("not replaced: %+v", got)
+	}
+
+	for index, id := range []string{"one", "two", "one"} {
+		photo := domain.Photo{PhotoMediaID: id, AddedAt: now.Add(time.Duration(index) * time.Second)}
+		if err := repository.AddPhoto(ctx, "anna", photo); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	got, err = repository.Get(ctx, "anna")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if len(got.Photos) != 2 || got.Photos[0].PhotoMediaID != "one" || got.Fields.PhotoMediaID != "one" {
+		t.Fatalf("the newest first: %+v", got)
+	}
+
+	if err := repository.RemovePhoto(ctx, "anna", "one", now); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err = repository.Get(ctx, "anna")
+	if err != nil || got.Fields.PhotoMediaID != "two" || len(got.Photos) != 1 {
+		t.Fatalf("after removing: %+v, %v", got, err)
+	}
+
+	if err := repository.RemovePhoto(ctx, "anna", "two", now); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err = repository.Get(ctx, "anna")
+	if err != nil || got.Fields.PhotoMediaID != "" || len(got.Photos) != 0 {
+		t.Fatalf("after the last one: %+v, %v", got, err)
+	}
+
+	err = repository.AddPhoto(ctx, "nobody", domain.Photo{PhotoMediaID: "x", AddedAt: now})
+	if !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("a missing profile: %v", err)
 	}
 }

@@ -20,9 +20,13 @@ func NewSearchQueue(pool *pgxpool.Pool) *SearchQueue {
 
 func (r *SearchQueue) Pending(ctx context.Context, limit int) ([]usecase.QueuedPerson, error) {
 	rows, err := r.pool.Query(ctx, `
-		SELECT q.version, p.subject, p.first_name, p.last_name, p.username
+		SELECT q.version, p.subject, p.first_name, p.last_name, p.username,
+			CASE WHEN COALESCE(r.photos, 0) = 0 THEN p.photo_media_id ELSE '' END,
+			CASE WHEN COALESCE(r.photos, 0) = 0 THEN p.video_media_id ELSE '' END,
+			COALESCE(r.search, 0) = 2
 		FROM search_queue q
 		JOIN profiles p ON p.subject = q.subject
+		LEFT JOIN profile_privacy r ON r.subject = q.subject
 		ORDER BY q.version
 		LIMIT $1`, limit,
 	)
@@ -40,7 +44,11 @@ func (r *SearchQueue) Pending(ctx context.Context, limit int) ([]usecase.QueuedP
 		)
 
 		person := &next.Person
-		if err := rows.Scan(&next.Version, &person.Subject, &person.FirstName, &person.LastName, &username); err != nil {
+		err := rows.Scan(
+			&next.Version, &person.Subject, &person.FirstName, &person.LastName, &username,
+			&person.PhotoMediaID, &person.VideoMediaID, &person.IsHidden,
+		)
+		if err != nil {
 			return nil, fmt.Errorf("scan queue: %w", err)
 		}
 

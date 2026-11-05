@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync"
 	"time"
 
@@ -24,21 +25,26 @@ type Index interface {
 	Search(ctx context.Context, query string, limit int) ([]domain.Person, error)
 }
 
+type Blockers interface {
+	BlockersOf(ctx context.Context, subject string) ([]string, error)
+}
+
 type window struct {
 	start time.Time
 	count int
 }
 
 type Service struct {
-	index Index
-	now   func() time.Time
+	index    Index
+	blockers Blockers
+	now      func() time.Time
 
 	mu      sync.Mutex
 	windows map[string]window
 }
 
-func New(index Index, now func() time.Time) *Service {
-	return &Service{index: index, now: now, windows: map[string]window{}}
+func New(index Index, blockers Blockers, now func() time.Time) *Service {
+	return &Service{index: index, blockers: blockers, now: now, windows: map[string]window{}}
 }
 
 func (s *Service) Search(ctx context.Context, principal identity.Principal, raw string) ([]domain.Person, error) {
@@ -60,10 +66,16 @@ func (s *Service) Search(ctx context.Context, principal identity.Principal, raw 
 		return nil, errors.Join(domain.ErrSearchUnavailable, err)
 	}
 
+	blockers, err := s.blockers.BlockersOf(ctx, principal.Subject)
+	if err != nil {
+		return nil, fmt.Errorf("read blockers: %w", err)
+	}
+
 	people := make([]domain.Person, 0, len(found))
 
 	for _, person := range found {
-		if person.Subject != principal.Subject && len(people) < domain.MaxResults {
+		isBlocked := slices.Contains(blockers, person.Subject)
+		if !isBlocked && person.Subject != principal.Subject && len(people) < domain.MaxResults {
 			people = append(people, person)
 		}
 	}

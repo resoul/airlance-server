@@ -19,6 +19,8 @@ const (
 type Repository interface {
 	Create(ctx context.Context, object domain.Object) error
 	Get(ctx context.Context, id string) (domain.Object, error)
+	IsProfileMedia(ctx context.Context, id, viewer string) (bool, error)
+	IsVisibleStoryMedia(ctx context.Context, id, viewer string, now time.Time) (bool, error)
 }
 
 type Store interface {
@@ -74,7 +76,14 @@ func (s *Service) RequestDownload(ctx context.Context, principal identity.Princi
 	}
 
 	if object.Owner != principal.Subject {
-		return Ticket{}, fmt.Errorf("another person's media: %w", domain.ErrNotFound)
+		allowed, err := s.mayRead(ctx, id, principal.Subject)
+		if err != nil {
+			return Ticket{}, fmt.Errorf("check media: %w", err)
+		}
+
+		if !allowed {
+			return Ticket{}, fmt.Errorf("another person's media: %w", domain.ErrNotFound)
+		}
 	}
 
 	url, err := s.store.DownloadURL(ctx, id, ticketTTL)
@@ -83,6 +92,15 @@ func (s *Service) RequestDownload(ctx context.Context, principal identity.Princi
 	}
 
 	return Ticket{MediaID: id, URL: url, ExpiresAt: s.now().Add(ticketTTL)}, nil
+}
+
+func (s *Service) mayRead(ctx context.Context, id, viewer string) (bool, error) {
+	public, err := s.repository.IsProfileMedia(ctx, id, viewer)
+	if err != nil || public {
+		return public, err
+	}
+
+	return s.repository.IsVisibleStoryMedia(ctx, id, viewer, s.now())
 }
 
 func newID() (string, error) {

@@ -21,6 +21,24 @@ table ProfileSet {
   last_name: string;
   username: string;
   bio: string;
+  phone: string;
+  photo_media_id: string;
+  video_media_id: string;
+}
+
+table ProfilePhoto {
+  photo_media_id: string;
+  video_media_id: string;
+  added_at_unix: long;
+}
+
+table ProfilePhotoAdd {
+  photo_media_id: string;
+  video_media_id: string;
+}
+
+table ProfilePhotoRemove {
+  photo_media_id: string;
 }
 
 table ProfileData {
@@ -30,6 +48,10 @@ table ProfileData {
   username: string;
   bio: string;
   updated_at_unix: long;
+  phone: string;
+  photo_media_id: string;
+  video_media_id: string;
+  photos: [ProfilePhoto];
 }
 
 table Authenticate {
@@ -76,6 +98,8 @@ table SearchPerson {
   first_name: string;
   last_name: string;
   username: string;
+  photo_media_id: string;
+  video_media_id: string;
 }
 
 table SearchResults {
@@ -84,4 +108,171 @@ table SearchResults {
 
 table PublicProfileGet {
   subject: string;
+}
+
+table MessageData {
+  chat_id: string;
+  message_id: long;
+  sender: string;
+  client_id: string;
+  text: string;
+  sent_at_unix_ms: long;
+}
+
+table ChatData {
+  chat_id: string;
+  peer_subject: string;
+  peer_first_name: string;
+  peer_last_name: string;
+  peer_username: string;
+  last_message: MessageData;
+  peer_photo_media_id: string;
+  peer_video_media_id: string;
+}
+
+table ChatOpenDirect {
+  peer_subject: string;
+}
+
+table MessageSend {
+  chat_id: string;
+  client_id: string;
+  text: string;
+}
+
+table HistoryGet {
+  chat_id: string;
+  before_id: long;
+  limit: int;
+}
+
+table HistoryData {
+  messages: [MessageData];
+}
+
+table ChatsGet {
+  before_id: long;
+}
+
+table ChatsData {
+  chats: [ChatData];
+}
+
+table StoryPublish {
+  client_id: string;
+  media_id: string;
+  cover_media_id: string;
+  is_video: bool;
+  lifetime_hours: int;
+  meta: string;
+}
+
+table StoryData {
+  story_id: string;
+  client_id: string;
+  owner_subject: string;
+  owner_first_name: string;
+  owner_last_name: string;
+  owner_photo_media_id: string;
+  owner_video_media_id: string;
+  media_id: string;
+  cover_media_id: string;
+  is_video: bool;
+  meta: string;
+  created_at_unix: long;
+  expires_at_unix: long;
+  seen: bool;
+  view_count: int;
+}
+
+table StoriesGet {
+}
+
+table StoriesData {
+  stories: [StoryData];
+}
+
+table StoryView {
+  story_id: string;
+}
+
+table StoryDelete {
+  story_id: string;
+}
+
+table StoriesChanged {
+}
+
+table PrivacyGet {
+}
+
+table PrivacySet {
+  phone: int;
+  photos: int;
+  bio: int;
+  messages: int;
+  search: int;
+}
+
+table PrivacyData {
+  phone: int;
+  photos: int;
+  bio: int;
+  messages: int;
+  search: int;
+}
+
+table BlocksGet {
+}
+
+table BlocksData {
+  people: [SearchPerson];
+}
+
+table BlockSet {
+  subject: string;
+  blocked: bool;
+}
+
+table ContactData {
+  subject: string;
+  first_name: string;
+  last_name: string;
+  username: string;
+  photo_media_id: string;
+  video_media_id: string;
+  custom_first_name: string;
+  custom_last_name: string;
+  phone: string;
+  from_device: bool;
+}
+
+table ContactsGet {
+}
+
+table ContactsData {
+  contacts: [ContactData];
+}
+
+table ContactAdd {
+  subject: string;
+  custom_first_name: string;
+  custom_last_name: string;
+}
+
+table ContactAddPhone {
+  phone: string;
+  custom_first_name: string;
+  custom_last_name: string;
+}
+
+table ContactRemove {
+  subject: string;
+}
+
+table ContactsSync {
+  phones: [string];
+}
+
+table ContactsChanged {
 }

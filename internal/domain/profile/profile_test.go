@@ -28,6 +28,9 @@ func TestNewAppliesTheRules(t *testing.T) {
 		{"a username ending in _", profile.Fields{FirstName: "A", Username: "abcde_"}, profile.ErrInvalidUsername},
 		{"a cyrillic username", profile.Fields{FirstName: "A", Username: "анна_шева"}, profile.ErrInvalidUsername},
 		{"a long bio", profile.Fields{FirstName: "A", Bio: strings.Repeat("я", 71)}, profile.ErrInvalidBio},
+		{"a long phone", profile.Fields{FirstName: "A", Phone: strings.Repeat("1", 33)}, profile.ErrInvalidPhone},
+		{"a phone with a line break", profile.Fields{FirstName: "A", Phone: "1\n2"}, profile.ErrInvalidPhone},
+		{"a video without a photo", profile.Fields{FirstName: "A", VideoMediaID: "v"}, profile.ErrInvalidMedia},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

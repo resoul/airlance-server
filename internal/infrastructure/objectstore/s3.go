@@ -96,3 +96,11 @@ func (s *Store) DownloadURL(ctx context.Context, id string, ttl time.Duration) (
 
 	return signed.String(), nil
 }
+
+func (s *Store) Remove(ctx context.Context, id string) error {
+	if err := s.internal.RemoveObject(ctx, s.bucket, id, minio.RemoveObjectOptions{}); err != nil {
+		return fmt.Errorf("remove object: %w", err)
+	}
+
+	return nil
+}

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -46,4 +47,53 @@ func (r *Media) Get(ctx context.Context, id string) (domain.Object, error) {
 	}
 
 	return got, nil
+}
+
+func (r *Media) IsProfileMedia(ctx context.Context, id, viewer string) (bool, error) {
+	var found bool
+
+	err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM profile_photos f
+			LEFT JOIN profile_privacy q ON q.subject = f.subject
+			WHERE (f.photo_media_id = $1 OR f.video_media_id = $1)
+				AND NOT EXISTS (SELECT 1 FROM blocks b WHERE b.owner = f.subject AND b.blocked = $2)
+				AND (
+					COALESCE(q.photos, 0) = 0
+					OR (q.photos = 1 AND EXISTS (
+						SELECT 1 FROM contacts c WHERE c.owner = f.subject AND c.contact = $2
+					))
+				)
+		)`, id, viewer,
+	).Scan(&found)
+	if err != nil {
+		return false, fmt.Errorf("select profile media: %w", err)
+	}
+
+	return found, nil
+}
+
+func (r *Media) IsVisibleStoryMedia(ctx context.Context, id, viewer string, now time.Time) (bool, error) {
+	var found bool
+
+	err := r.pool.QueryRow(ctx, `
+		SELECT EXISTS (
+			SELECT 1 FROM stories s
+			WHERE (s.media_id = $1 OR s.cover_media_id = $1) AND s.expires_at > $3
+				AND NOT EXISTS (
+					SELECT 1 FROM blocks b
+					WHERE (b.owner = s.owner AND b.blocked = $2) OR (b.owner = $2 AND b.blocked = s.owner)
+				)
+				AND s.owner IN (
+					SELECT o.subject FROM chat_members m
+					JOIN chat_members o ON o.chat_id = m.chat_id AND o.subject <> m.subject
+					WHERE m.subject = $2
+				)
+		)`, id, viewer, now,
+	).Scan(&found)
+	if err != nil {
+		return false, fmt.Errorf("select story media: %w", err)
+	}
+
+	return found, nil
 }

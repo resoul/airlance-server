@@ -16,7 +16,6 @@ AIRLANCE_SERVER_TEST_DATABASE_URL=postgres://... AIRLANCE_SERVER_TEST_S3_ENDPOIN
 
 ## Not done yet
 
-- Chats and messages. The only update so far is a changed profile, and that is all the app's Sync applies.
+- Groups, channels and media in messages. So far there are direct chats and text.
 - Files in the app: the server gives signed links to SeaweedFS, but the app does not use them yet.
-- The search screen in the app: the server finds people through Meilisearch, but the app does not ask yet.
 - A connection handles one request at a time.

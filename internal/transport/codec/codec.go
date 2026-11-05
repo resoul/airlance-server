@@ -13,7 +13,10 @@ const fileIdentifier = "ALNC"
 
 const MaxFrameBytes = 4 << 20
 
-const maxSearchPeople = 256
+const (
+	maxSearchPeople  = 256
+	maxProfilePhotos = 1024
+)
 
 var ErrInvalid = errors.New("invalid frame")
 
@@ -39,13 +42,18 @@ const (
 	KindSearch           = Kind(wire.MessageKindSearch)
 	KindSearchResults    = Kind(wire.MessageKindSearchResults)
 	KindPublicProfileGet = Kind(wire.MessageKindPublicProfileGet)
+
+	KindProfilePhotoAdd    = Kind(wire.MessageKindProfilePhotoAdd)
+	KindProfilePhotoRemove = Kind(wire.MessageKindProfilePhotoRemove)
 )
 
 type SearchPerson struct {
-	Subject   string
-	FirstName string
-	LastName  string
-	Username  string
+	Subject      string
+	FirstName    string
+	LastName     string
+	Username     string
+	PhotoMediaID string
+	VideoMediaID string
 }
 
 type MediaUploadTicket struct {
@@ -67,15 +75,25 @@ type Frame struct {
 }
 
 type ProfileFields struct {
-	FirstName string
-	LastName  string
-	Username  string
-	Bio       string
+	FirstName    string
+	LastName     string
+	Username     string
+	Bio          string
+	Phone        string
+	PhotoMediaID string
+	VideoMediaID string
+}
+
+type ProfilePhoto struct {
+	PhotoMediaID string
+	VideoMediaID string
+	AddedAtUnix  int64
 }
 
 type ProfileData struct {
 	Subject       string
 	Fields        ProfileFields
+	Photos        []ProfilePhoto
 	UpdatedAtUnix int64
 }
 
@@ -336,10 +354,12 @@ func DecodeSearchResults(body []byte) ([]SearchPerson, error) {
 			}
 
 			people[index] = SearchPerson{
-				Subject:   string(row.Subject()),
-				FirstName: string(row.FirstName()),
-				LastName:  string(row.LastName()),
-				Username:  string(row.Username()),
+				Subject:      string(row.Subject()),
+				FirstName:    string(row.FirstName()),
+				LastName:     string(row.LastName()),
+				Username:     string(row.Username()),
+				PhotoMediaID: string(row.PhotoMediaId()),
+				VideoMediaID: string(row.VideoMediaId()),
 			}
 		}
 	})
@@ -356,11 +376,15 @@ func EncodeSearchResults(people []SearchPerson) []byte {
 		first := builder.CreateString(person.FirstName)
 		last := builder.CreateString(person.LastName)
 		username := builder.CreateString(person.Username)
+		photo := builder.CreateString(person.PhotoMediaID)
+		video := builder.CreateString(person.VideoMediaID)
 		wire.SearchPersonStart(builder)
 		wire.SearchPersonAddSubject(builder, subject)
 		wire.SearchPersonAddFirstName(builder, first)
 		wire.SearchPersonAddLastName(builder, last)
 		wire.SearchPersonAddUsername(builder, username)
+		wire.SearchPersonAddPhotoMediaId(builder, photo)
+		wire.SearchPersonAddVideoMediaId(builder, video)
 		offsets[index] = wire.SearchPersonEnd(builder)
 	}
 
@@ -463,10 +487,13 @@ func DecodeProfileSet(body []byte) (ProfileFields, error) {
 	err := safely(func() {
 		table := wire.GetRootAsProfileSet(body, 0)
 		fields = ProfileFields{
-			FirstName: string(table.FirstName()),
-			LastName:  string(table.LastName()),
-			Username:  string(table.Username()),
-			Bio:       string(table.Bio()),
+			FirstName:    string(table.FirstName()),
+			LastName:     string(table.LastName()),
+			Username:     string(table.Username()),
+			Bio:          string(table.Bio()),
+			Phone:        string(table.Phone()),
+			PhotoMediaID: string(table.PhotoMediaId()),
+			VideoMediaID: string(table.VideoMediaId()),
 		}
 	})
 
@@ -479,11 +506,17 @@ func EncodeProfileSet(fields ProfileFields) []byte {
 	last := builder.CreateString(fields.LastName)
 	username := builder.CreateString(fields.Username)
 	bio := builder.CreateString(fields.Bio)
+	phone := builder.CreateString(fields.Phone)
+	photo := builder.CreateString(fields.PhotoMediaID)
+	video := builder.CreateString(fields.VideoMediaID)
 	wire.ProfileSetStart(builder)
 	wire.ProfileSetAddFirstName(builder, first)
 	wire.ProfileSetAddLastName(builder, last)
 	wire.ProfileSetAddUsername(builder, username)
 	wire.ProfileSetAddBio(builder, bio)
+	wire.ProfileSetAddPhone(builder, phone)
+	wire.ProfileSetAddPhotoMediaId(builder, photo)
+	wire.ProfileSetAddVideoMediaId(builder, video)
 	builder.Finish(wire.ProfileSetEnd(builder))
 
 	return builder.FinishedBytes()
@@ -497,31 +530,124 @@ func DecodeProfileData(body []byte) (ProfileData, error) {
 		data = ProfileData{
 			Subject: string(table.Subject()),
 			Fields: ProfileFields{
-				FirstName: string(table.FirstName()),
-				LastName:  string(table.LastName()),
-				Username:  string(table.Username()),
-				Bio:       string(table.Bio()),
+				FirstName:    string(table.FirstName()),
+				LastName:     string(table.LastName()),
+				Username:     string(table.Username()),
+				Bio:          string(table.Bio()),
+				Phone:        string(table.Phone()),
+				PhotoMediaID: string(table.PhotoMediaId()),
+				VideoMediaID: string(table.VideoMediaId()),
 			},
 			UpdatedAtUnix: table.UpdatedAtUnix(),
+		}
+
+		if table.PhotosLength() > maxProfilePhotos {
+			panic("too many photos")
+		}
+
+		var row wire.ProfilePhoto
+
+		for index := range table.PhotosLength() {
+			if !table.Photos(&row, index) {
+				panic("photo")
+			}
+
+			data.Photos = append(data.Photos, ProfilePhoto{
+				PhotoMediaID: string(row.PhotoMediaId()),
+				VideoMediaID: string(row.VideoMediaId()),
+				AddedAtUnix:  row.AddedAtUnix(),
+			})
 		}
 	})
 
 	return data, err
 }
 
+func EncodeProfilePhotoAdd(photoMediaID, videoMediaID string) []byte {
+	builder := flatbuffers.NewBuilder(128)
+	photo := builder.CreateString(photoMediaID)
+	video := builder.CreateString(videoMediaID)
+	wire.ProfilePhotoAddStart(builder)
+	wire.ProfilePhotoAddAddPhotoMediaId(builder, photo)
+	wire.ProfilePhotoAddAddVideoMediaId(builder, video)
+	builder.Finish(wire.ProfilePhotoAddEnd(builder))
+
+	return builder.FinishedBytes()
+}
+
+func DecodeProfilePhotoAdd(body []byte) (photoMediaID, videoMediaID string, err error) {
+	err = safely(func() {
+		table := wire.GetRootAsProfilePhotoAdd(body, 0)
+		photoMediaID = string(table.PhotoMediaId())
+		videoMediaID = string(table.VideoMediaId())
+	})
+
+	return photoMediaID, videoMediaID, err
+}
+
+func EncodeProfilePhotoRemove(photoMediaID string) []byte {
+	builder := flatbuffers.NewBuilder(64)
+	photo := builder.CreateString(photoMediaID)
+	wire.ProfilePhotoRemoveStart(builder)
+	wire.ProfilePhotoRemoveAddPhotoMediaId(builder, photo)
+	builder.Finish(wire.ProfilePhotoRemoveEnd(builder))
+
+	return builder.FinishedBytes()
+}
+
+func DecodeProfilePhotoRemove(body []byte) (string, error) {
+	var photoMediaID string
+
+	err := safely(func() {
+		photoMediaID = string(wire.GetRootAsProfilePhotoRemove(body, 0).PhotoMediaId())
+	})
+
+	return photoMediaID, err
+}
+
+func buildProfilePhotos(builder *flatbuffers.Builder, photos []ProfilePhoto) flatbuffers.UOffsetT {
+	offsets := make([]flatbuffers.UOffsetT, len(photos))
+
+	for index, next := range photos {
+		photo := builder.CreateString(next.PhotoMediaID)
+		video := builder.CreateString(next.VideoMediaID)
+		wire.ProfilePhotoStart(builder)
+		wire.ProfilePhotoAddPhotoMediaId(builder, photo)
+		wire.ProfilePhotoAddVideoMediaId(builder, video)
+		wire.ProfilePhotoAddAddedAtUnix(builder, next.AddedAtUnix)
+		offsets[index] = wire.ProfilePhotoEnd(builder)
+	}
+
+	wire.ProfileDataStartPhotosVector(builder, len(offsets))
+
+	for index := len(offsets) - 1; index >= 0; index-- {
+		builder.PrependUOffsetT(offsets[index])
+	}
+
+	return builder.EndVector(len(offsets))
+}
+
 func EncodeProfileData(data ProfileData) []byte {
 	builder := flatbuffers.NewBuilder(256)
+	photos := buildProfilePhotos(builder, data.Photos)
 	subject := builder.CreateString(data.Subject)
 	first := builder.CreateString(data.Fields.FirstName)
 	last := builder.CreateString(data.Fields.LastName)
 	username := builder.CreateString(data.Fields.Username)
 	bio := builder.CreateString(data.Fields.Bio)
+	phone := builder.CreateString(data.Fields.Phone)
+	photo := builder.CreateString(data.Fields.PhotoMediaID)
+	video := builder.CreateString(data.Fields.VideoMediaID)
 	wire.ProfileDataStart(builder)
 	wire.ProfileDataAddSubject(builder, subject)
 	wire.ProfileDataAddFirstName(builder, first)
 	wire.ProfileDataAddLastName(builder, last)
 	wire.ProfileDataAddUsername(builder, username)
 	wire.ProfileDataAddBio(builder, bio)
+	wire.ProfileDataAddPhone(builder, phone)
+	wire.ProfileDataAddPhotoMediaId(builder, photo)
+	wire.ProfileDataAddVideoMediaId(builder, video)
+	wire.ProfileDataAddPhotos(builder, photos)
 	wire.ProfileDataAddUpdatedAtUnix(builder, data.UpdatedAtUnix)
 	builder.Finish(wire.ProfileDataEnd(builder))
 

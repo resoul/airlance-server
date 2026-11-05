@@ -93,8 +93,52 @@ func (rcv *ProfileData) MutateUpdatedAtUnix(n int64) bool {
 	return rcv._tab.MutateInt64Slot(14, n)
 }
 
+func (rcv *ProfileData) Phone() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ProfileData) PhotoMediaId() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ProfileData) VideoMediaId() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(20))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ProfileData) Photos(obj *ProfilePhoto, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(22))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *ProfileData) PhotosLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(22))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
 func ProfileDataStart(builder *flatbuffers.Builder) {
-	builder.StartObject(6)
+	builder.StartObject(10)
 }
 func ProfileDataAddSubject(builder *flatbuffers.Builder, subject flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(subject), 0)
@@ -113,6 +157,21 @@ func ProfileDataAddBio(builder *flatbuffers.Builder, bio flatbuffers.UOffsetT) {
 }
 func ProfileDataAddUpdatedAtUnix(builder *flatbuffers.Builder, updatedAtUnix int64) {
 	builder.PrependInt64Slot(5, updatedAtUnix, 0)
+}
+func ProfileDataAddPhone(builder *flatbuffers.Builder, phone flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(6, flatbuffers.UOffsetT(phone), 0)
+}
+func ProfileDataAddPhotoMediaId(builder *flatbuffers.Builder, photoMediaId flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(7, flatbuffers.UOffsetT(photoMediaId), 0)
+}
+func ProfileDataAddVideoMediaId(builder *flatbuffers.Builder, videoMediaId flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(8, flatbuffers.UOffsetT(videoMediaId), 0)
+}
+func ProfileDataAddPhotos(builder *flatbuffers.Builder, photos flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(9, flatbuffers.UOffsetT(photos), 0)
+}
+func ProfileDataStartPhotosVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
 }
 func ProfileDataEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

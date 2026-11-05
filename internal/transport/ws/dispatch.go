@@ -26,6 +26,8 @@ type Profiles interface {
 	GetOwn(ctx context.Context, principal identity.Principal) (profile.Profile, error)
 	GetPublic(ctx context.Context, principal identity.Principal, subject string) (profile.Profile, error)
 	UpdateOwn(ctx context.Context, principal identity.Principal, fields profile.Fields) (profile.Profile, error)
+	AddPhoto(ctx context.Context, principal identity.Principal, photoMediaID, videoMediaID string) (profile.Profile, error)
+	RemovePhoto(ctx context.Context, principal identity.Principal, photoMediaID string) (profile.Profile, error)
 }
 
 func (h *Handler) dispatch(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {
@@ -50,12 +52,57 @@ func (h *Handler) dispatch(ctx context.Context, principal identity.Principal, re
 		got, err := h.profiles.UpdateOwn(ctx, principal, profile.Fields(fields))
 
 		return h.profileReply(ctx, request, got, err)
+	case codec.KindProfilePhotoAdd:
+		photo, video, err := codec.DecodeProfilePhotoAdd(request.Body)
+		if err != nil {
+			return failure(request, codeInvalid, "invalid body")
+		}
+
+		got, err := h.profiles.AddPhoto(ctx, principal, photo, video)
+
+		return h.profileReply(ctx, request, got, err)
+	case codec.KindProfilePhotoRemove:
+		photo, err := codec.DecodeProfilePhotoRemove(request.Body)
+		if err != nil {
+			return failure(request, codeInvalid, "invalid body")
+		}
+
+		got, err := h.profiles.RemovePhoto(ctx, principal, photo)
+
+		return h.profileReply(ctx, request, got, err)
 	case codec.KindMediaUploadRequest:
 		return h.mediaUpload(ctx, principal, request)
 	case codec.KindMediaDownloadRequest:
 		return h.mediaDownload(ctx, principal, request)
 	case codec.KindSearch:
 		return h.search(ctx, principal, request)
+	case codec.KindContactsGet, codec.KindContactAdd, codec.KindContactAddPhone,
+		codec.KindContactRemove, codec.KindContactsSync:
+		return h.contactsRequest(ctx, principal, request)
+	case codec.KindPrivacyGet:
+		return h.privacyGet(ctx, principal, request)
+	case codec.KindPrivacySet:
+		return h.privacySet(ctx, principal, request)
+	case codec.KindBlocksGet:
+		return h.blocksGet(ctx, principal, request)
+	case codec.KindBlockSet:
+		return h.blockSet(ctx, principal, request)
+	case codec.KindStoryPublish:
+		return h.storyPublish(ctx, principal, request)
+	case codec.KindStoriesGet:
+		return h.storiesGet(ctx, principal, request)
+	case codec.KindStoryView:
+		return h.storyView(ctx, principal, request)
+	case codec.KindStoryDelete:
+		return h.storyDelete(ctx, principal, request)
+	case codec.KindChatOpenDirect:
+		return h.chatOpenDirect(ctx, principal, request)
+	case codec.KindMessageSend:
+		return h.messageSend(ctx, principal, request)
+	case codec.KindHistoryGet:
+		return h.historyGet(ctx, principal, request)
+	case codec.KindChatsGet:
+		return h.chatsGet(ctx, principal, request)
 	case codec.KindPublicProfileGet:
 		subject, err := codec.DecodePublicProfileGet(request.Body)
 		if err != nil {
@@ -86,6 +133,12 @@ func (h *Handler) profileReply(ctx context.Context, request codec.Frame, got pro
 		return failure(request, codeUnprocessable, "invalid_username")
 	case errors.Is(err, profile.ErrInvalidBio):
 		return failure(request, codeUnprocessable, "invalid_bio")
+	case errors.Is(err, profile.ErrInvalidPhone):
+		return failure(request, codeUnprocessable, "invalid_phone")
+	case errors.Is(err, profile.ErrInvalidMedia):
+		return failure(request, codeUnprocessable, "invalid_media")
+	case errors.Is(err, profile.ErrTooManyPhotos):
+		return failure(request, codeUnprocessable, "too_many_photos")
 	default:
 		h.logger.ErrorContext(ctx, "profile request failed", slog.Any("error", err))
 
@@ -94,9 +147,19 @@ func (h *Handler) profileReply(ctx context.Context, request codec.Frame, got pro
 }
 
 func profileBody(got profile.Profile) []byte {
+	photos := make([]codec.ProfilePhoto, len(got.Photos))
+	for index, photo := range got.Photos {
+		photos[index] = codec.ProfilePhoto{
+			PhotoMediaID: photo.PhotoMediaID,
+			VideoMediaID: photo.VideoMediaID,
+			AddedAtUnix:  photo.AddedAt.Unix(),
+		}
+	}
+
 	return codec.EncodeProfileData(codec.ProfileData{
 		Subject:       got.Subject,
 		Fields:        codec.ProfileFields(got.Fields),
+		Photos:        photos,
 		UpdatedAtUnix: got.UpdatedAt.Unix(),
 	})
 }

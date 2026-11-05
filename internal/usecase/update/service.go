@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"go.airlance.org/server/internal/domain/identity"
+	"go.airlance.org/server/internal/domain/message"
 	"go.airlance.org/server/internal/domain/profile"
 	domain "go.airlance.org/server/internal/domain/update"
 )
@@ -23,8 +24,12 @@ func New(repository Repository, hub *Hub) *Service {
 	return &Service{repository: repository, hub: hub}
 }
 
+func mayRead(principal identity.Principal) bool {
+	return principal.HasScope(profile.ScopeRead) && principal.HasScope(message.ScopeRead)
+}
+
 func (s *Service) Subscribe(ctx context.Context, principal identity.Principal, after uint64) (uint64, error) {
-	if !principal.HasScope(profile.ScopeRead) {
+	if !mayRead(principal) {
 		return 0, identity.ErrForbidden
 	}
 
@@ -46,7 +51,7 @@ func (s *Service) After(
 	after uint64,
 	limit int,
 ) ([]domain.Update, error) {
-	if !principal.HasScope(profile.ScopeRead) {
+	if !mayRead(principal) {
 		return nil, identity.ErrForbidden
 	}
 

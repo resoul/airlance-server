@@ -16,8 +16,13 @@ import (
 
 	"github.com/coder/websocket"
 
+	"go.airlance.org/server/internal/domain/contact"
+	"go.airlance.org/server/internal/domain/directory"
 	"go.airlance.org/server/internal/domain/identity"
+	"go.airlance.org/server/internal/domain/message"
+	"go.airlance.org/server/internal/domain/privacy"
 	"go.airlance.org/server/internal/domain/profile"
+	"go.airlance.org/server/internal/domain/story"
 	"go.airlance.org/server/internal/domain/update"
 	"go.airlance.org/server/internal/transport/codec"
 	"go.airlance.org/server/internal/transport/wireauth"
@@ -57,6 +62,78 @@ func (fakeProfiles) GetPublic(_ context.Context, _ identity.Principal, subject s
 	return profile.Profile{Subject: subject, Fields: profile.Fields{FirstName: "Петро"}, UpdatedAt: time.Unix(5, 0)}, nil
 }
 
+func (fakeProfiles) AddPhoto(_ context.Context, principal identity.Principal, photo, video string) (profile.Profile, error) {
+	return profile.Profile{Subject: principal.Subject, Photos: []profile.Photo{
+		{PhotoMediaID: photo, VideoMediaID: video, AddedAt: time.Unix(7, 0)},
+	}, UpdatedAt: time.Unix(5, 0)}, nil
+}
+
+func (fakeProfiles) RemovePhoto(_ context.Context, principal identity.Principal, _ string) (profile.Profile, error) {
+	return profile.Profile{Subject: principal.Subject, UpdatedAt: time.Unix(5, 0)}, nil
+}
+
+type fakeContacts struct{}
+
+func (fakeContacts) List(context.Context, identity.Principal) ([]contact.Contact, error) {
+	return []contact.Contact{{Subject: "a"}}, nil
+}
+
+func (fakeContacts) Add(_ context.Context, _ identity.Principal, subject, _, _ string) ([]contact.Contact, error) {
+	return []contact.Contact{{Subject: subject}}, nil
+}
+
+func (fakeContacts) AddByPhone(context.Context, identity.Principal, string, string, string) ([]contact.Contact, error) {
+	return nil, contact.ErrNotFound
+}
+
+func (fakeContacts) Remove(context.Context, identity.Principal, string) ([]contact.Contact, error) {
+	return nil, nil
+}
+
+func (fakeContacts) Sync(context.Context, identity.Principal, []string) ([]contact.Contact, error) {
+	return nil, nil
+}
+
+type fakePrivacy struct{}
+
+func (fakePrivacy) Get(context.Context, identity.Principal) (privacy.Settings, error) {
+	return privacy.Defaults(), nil
+}
+
+func (fakePrivacy) Set(_ context.Context, _ identity.Principal, settings privacy.Settings) (privacy.Settings, error) {
+	return settings, nil
+}
+
+func (fakePrivacy) Blocked(context.Context, identity.Principal) ([]directory.Person, error) {
+	return nil, nil
+}
+
+func (fakePrivacy) SetBlocked(context.Context, identity.Principal, string, bool) ([]directory.Person, error) {
+	return nil, nil
+}
+
+type fakeStories struct{}
+
+func (fakeStories) Publish(_ context.Context, _ identity.Principal, draft story.Draft) (story.Story, error) {
+	return story.Story{ID: "s1", ClientID: draft.ClientID, MediaID: draft.MediaID}, nil
+}
+
+func (fakeStories) Feed(context.Context, identity.Principal) ([]story.Story, error) {
+	return []story.Story{{ID: "s1", MediaID: "m1"}}, nil
+}
+
+func (fakeStories) View(_ context.Context, _ identity.Principal, id string) error {
+	if id == "missing" {
+		return story.ErrNotFound
+	}
+
+	return nil
+}
+
+func (fakeStories) Delete(context.Context, identity.Principal, string) error {
+	return nil
+}
+
 func (fakeProfiles) UpdateOwn(_ context.Context, principal identity.Principal, fields profile.Fields) (profile.Profile, error) {
 	if fields.Username == "taken" {
 		return profile.Profile{}, profile.ErrUsernameTaken
@@ -88,6 +165,15 @@ func (u *fakeUpdates) publish(firstName string) {
 			UpdatedAt: time.Unix(5, 0),
 		},
 	})
+	u.mu.Unlock()
+
+	u.hub.Notify("anna")
+}
+
+func (u *fakeUpdates) publishMessage(next message.Message) {
+	u.mu.Lock()
+	seq := uint64(len(u.journal) + 1)
+	u.journal = append(u.journal, update.Update{Seq: seq, Kind: update.KindMessage, Message: next})
 	u.mu.Unlock()
 
 	u.hub.Notify("anna")
@@ -166,7 +252,16 @@ func start(t *testing.T, expiresIn time.Duration, limits ws.Limits) stack {
 	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
 	updates := &fakeUpdates{hub: updatesusecase.NewHub()}
 	auth := fakeAuth{expiresIn: expiresIn}
-	services := ws.Services{Profiles: fakeProfiles{}, Updates: updates, Media: fakeMedia{}, Directory: fakeDirectory{}}
+	services := ws.Services{
+		Profiles:  fakeProfiles{},
+		Updates:   updates,
+		Media:     fakeMedia{},
+		Stories:   fakeStories{},
+		Privacy:   fakePrivacy{},
+		Contacts:  fakeContacts{},
+		Directory: fakeDirectory{},
+		Messaging: fakeMessaging{},
+	}
 	handler := ws.NewHandler(t.Context(), secure, auth, services, limits, logger)
 	server := httptest.NewServer(handler)
 	t.Cleanup(server.Close)

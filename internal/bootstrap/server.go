@@ -17,10 +17,14 @@ import (
 	"go.airlance.org/server/internal/transport/httpapi"
 	"go.airlance.org/server/internal/transport/wireauth"
 	"go.airlance.org/server/internal/transport/ws"
+	"go.airlance.org/server/internal/usecase/contact"
 	"go.airlance.org/server/internal/usecase/directory"
 	"go.airlance.org/server/internal/usecase/media"
+	"go.airlance.org/server/internal/usecase/message"
+	"go.airlance.org/server/internal/usecase/privacy"
 	"go.airlance.org/server/internal/usecase/profile"
 	"go.airlance.org/server/internal/usecase/session"
+	"go.airlance.org/server/internal/usecase/story"
 	"go.airlance.org/server/internal/usecase/update"
 )
 
@@ -42,7 +46,14 @@ func Serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	indexer := directory.NewIndexer(postgres.NewSearchQueue(pool), index, func(err error) {
 		logger.ErrorContext(ctx, "search indexing failed", slog.Any("error", err))
 	})
-	profiles := profile.New(postgres.NewProfiles(pool), profile.Notifiers{hub, indexer}, time.Now)
+	guard := privacy.New(postgres.NewPrivacy(pool), hub, time.Now)
+	profiles := profile.New(
+		postgres.NewProfiles(pool),
+		postgres.NewMedia(pool),
+		guard,
+		profile.Notifiers{hub, indexer},
+		time.Now,
+	)
 	sessions := session.New(oidc.New(oidc.Config{Issuer: cfg.Issuer, Audience: cfg.Audience, JWKSURL: cfg.JWKSURL}))
 
 	secure, err := wireauth.NewServer(cfg.WireAuthKeys)
@@ -60,15 +71,30 @@ func Serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 	}
 
 	attachments := media.New(postgres.NewMedia(pool), files, time.Now)
+	stories := story.New(postgres.NewStories(pool), postgres.NewMedia(pool), files, hub, time.Now, func(err error) {
+		logger.ErrorContext(ctx, "story cleanup failed", slog.Any("error", err))
+	})
 	services := ws.Services{
 		Profiles:  profiles,
 		Updates:   updates,
 		Media:     attachments,
-		Directory: directory.New(index, time.Now),
+		Stories:   stories,
+		Privacy:   guard,
+		Contacts:  contact.New(postgres.NewContacts(pool), postgres.NewPrivacy(pool), postgres.NewProfiles(pool), hub, time.Now),
+		Directory: directory.New(index, guard, time.Now),
+		Messaging: message.New(
+			postgres.NewMessages(pool),
+			postgres.NewProfiles(pool),
+			guard,
+			hub,
+			message.NewIDs(0, time.Now),
+			time.Now,
+		),
 	}
 	socket := ws.NewHandler(ctx, secure, sessions, services, ws.DefaultLimits(), logger)
 
 	go indexer.Run(ctx)
+	go stories.Run(ctx)
 
 	server := &http.Server{
 		Addr:              cfg.Addr,

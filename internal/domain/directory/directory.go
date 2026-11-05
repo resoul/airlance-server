@@ -19,10 +19,13 @@ var (
 )
 
 type Person struct {
-	Subject   string
-	FirstName string
-	LastName  string
-	Username  string
+	Subject      string
+	FirstName    string
+	LastName     string
+	Username     string
+	PhotoMediaID string
+	VideoMediaID string
+	IsHidden     bool
 }
 
 func NormalizeQuery(raw string) (string, error) {

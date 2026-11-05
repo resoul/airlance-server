@@ -12,7 +12,17 @@ import (
 )
 
 type memoryRepository struct {
-	saved map[string]domain.Object
+	saved   map[string]domain.Object
+	public  map[string]bool
+	stories map[string]bool
+}
+
+func (m *memoryRepository) IsVisibleStoryMedia(_ context.Context, id, _ string, _ time.Time) (bool, error) {
+	return m.stories[id], nil
+}
+
+func (m *memoryRepository) IsProfileMedia(_ context.Context, id, _ string) (bool, error) {
+	return m.public[id], nil
 }
 
 func (m *memoryRepository) Create(_ context.Context, object domain.Object) error {
@@ -51,7 +61,7 @@ func (s fakeStore) DownloadURL(_ context.Context, id string, _ time.Duration) (s
 }
 
 func newService(store fakeStore) (*media.Service, *memoryRepository) {
-	repository := &memoryRepository{saved: map[string]domain.Object{}}
+	repository := &memoryRepository{saved: map[string]domain.Object{}, public: map[string]bool{}, stories: map[string]bool{}}
 	now := time.Unix(100, 0)
 
 	return media.New(repository, store, func() time.Time {
@@ -149,5 +159,28 @@ func TestNothingIsSavedWhenTheStoreCannotSign(t *testing.T) {
 
 	if len(repository.saved) != 0 {
 		t.Fatal("saved anyway")
+	}
+}
+
+func TestAnAvatarIsOpenToEveryoneAndStopsBeingOpenWhenReplaced(t *testing.T) {
+	t.Parallel()
+
+	service, repository := newService(fakeStore{})
+	ctx := context.Background()
+	boris := identity.Principal{Subject: "boris"}
+
+	ticket, err := service.RequestUpload(ctx, anna, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	repository.public[ticket.MediaID] = true
+	if _, err := service.RequestDownload(ctx, boris, ticket.MediaID); err != nil {
+		t.Fatalf("an avatar: %v", err)
+	}
+
+	repository.public[ticket.MediaID] = false
+	if _, err := service.RequestDownload(ctx, boris, ticket.MediaID); !errors.Is(err, domain.ErrNotFound) {
+		t.Fatalf("a replaced avatar: %v", err)
 	}
 }

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	domain "go.airlance.org/server/internal/domain/media"
+	"go.airlance.org/server/internal/domain/profile"
 	"go.airlance.org/server/internal/infrastructure/database"
 	"go.airlance.org/server/internal/repository/postgres"
 )
@@ -31,7 +32,7 @@ func TestMediaAgainstPostgres(t *testing.T) {
 	}
 	defer pool.Close()
 
-	if _, err := pool.Exec(ctx, "TRUNCATE media_objects"); err != nil {
+	if _, err := pool.Exec(ctx, "TRUNCATE media_objects, profiles, profile_photos"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -56,5 +57,35 @@ func TestMediaAgainstPostgres(t *testing.T) {
 
 	if err := repository.Create(ctx, want); err == nil {
 		t.Fatal("the same id twice was accepted")
+	}
+
+	if public, err := repository.IsProfileMedia(ctx, "one", "boris"); err != nil || public {
+		t.Fatalf("a private file: %v, %v", public, err)
+	}
+
+	next, err := profile.New("anna", profile.Fields{FirstName: "Анна"}, time.Unix(100, 0))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	profiles := postgres.NewProfiles(pool)
+	if err := profiles.Save(ctx, next); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := profiles.AddPhoto(ctx, "anna", profile.Photo{PhotoMediaID: "one", AddedAt: time.Unix(100, 0)}); err != nil {
+		t.Fatal(err)
+	}
+
+	if public, err := repository.IsProfileMedia(ctx, "one", "boris"); err != nil || !public {
+		t.Fatalf("an avatar: %v, %v", public, err)
+	}
+
+	if err := profiles.RemovePhoto(ctx, "anna", "one", time.Unix(101, 0)); err != nil {
+		t.Fatal(err)
+	}
+
+	if public, err := repository.IsProfileMedia(ctx, "one", "boris"); err != nil || public {
+		t.Fatalf("a removed photo: %v, %v", public, err)
 	}
 }

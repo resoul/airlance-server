@@ -27,7 +27,14 @@ func (h *Handler) search(ctx context.Context, principal identity.Principal, requ
 
 	found := make([]codec.SearchPerson, len(people))
 	for index, person := range people {
-		found[index] = codec.SearchPerson(person)
+		found[index] = codec.SearchPerson{
+			Subject:      person.Subject,
+			FirstName:    person.FirstName,
+			LastName:     person.LastName,
+			Username:     person.Username,
+			PhotoMediaID: person.PhotoMediaID,
+			VideoMediaID: person.VideoMediaID,
+		}
 	}
 
 	return reply(request, codec.KindSearchResults, codec.EncodeSearchResults(found))
