@@ -114,6 +114,8 @@ CREATE TABLE chat_members (
     subject   text NOT NULL,
     role      smallint NOT NULL DEFAULT 0,
     joined_at timestamptz NOT NULL DEFAULT now(),
+    is_pinned boolean NOT NULL DEFAULT false,
+    is_muted  boolean NOT NULL DEFAULT false,
     PRIMARY KEY (chat_id, subject)
 );
 

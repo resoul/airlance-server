@@ -29,6 +29,8 @@ func (h *Handler) groupRequest(ctx context.Context, principal identity.Principal
 		return h.chatResolve(ctx, principal, request)
 	case codec.KindChatPinSet:
 		return h.chatPinSet(ctx, principal, request)
+	case codec.KindChatMuteSet:
+		return h.chatMuteSet(ctx, principal, request)
 	case codec.KindChatInviteReset:
 		return h.chatInviteReset(ctx, principal, request)
 	case codec.KindUserResolve:
@@ -152,6 +154,20 @@ func (h *Handler) chatPinSet(ctx context.Context, principal identity.Principal, 
 	}
 
 	chat, err := h.messaging.SetPinned(ctx, principal, id, isPinned)
+	if err != nil {
+		return h.chatFailure(ctx, request, err)
+	}
+
+	return reply(request, codec.KindChatData, codec.EncodeChatData(chatData(chat)))
+}
+
+func (h *Handler) chatMuteSet(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {
+	id, isMuted, err := codec.DecodeChatMuteSet(request.Body)
+	if err != nil {
+		return failure(request, codeInvalid, "invalid body")
+	}
+
+	chat, err := h.messaging.SetMuted(ctx, principal, id, isMuted)
 	if err != nil {
 		return h.chatFailure(ctx, request, err)
 	}

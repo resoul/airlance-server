@@ -112,7 +112,7 @@ func (h *Handler) dispatch(ctx context.Context, principal identity.Principal, re
 		return h.agentRequest(ctx, principal, request)
 	case codec.KindChatCreate, codec.KindChatJoin, codec.KindChatLeave, codec.KindChatMembersGet,
 		codec.KindChatMemberAdd, codec.KindChatMemberRemove, codec.KindChatSearch, codec.KindChatResolve,
-		codec.KindChatInviteReset, codec.KindUserResolve, codec.KindChatPinSet:
+		codec.KindChatInviteReset, codec.KindUserResolve, codec.KindChatPinSet, codec.KindChatMuteSet:
 		return h.groupRequest(ctx, principal, request)
 	case codec.KindPublicProfileGet:
 		subject, err := codec.DecodePublicProfileGet(request.Body)

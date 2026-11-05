@@ -260,6 +260,25 @@ func (s *Service) SetPinned(
 	return s.chatOf(ctx, chatID, principal.Subject)
 }
 
+func (s *Service) SetMuted(
+	ctx context.Context,
+	principal identity.Principal,
+	chatID string,
+	isMuted bool,
+) (domain.Chat, error) {
+	if !principal.HasScope(domain.ScopeWrite) {
+		return domain.Chat{}, identity.ErrForbidden
+	}
+
+	if err := s.repository.SetMuted(ctx, chatID, principal.Subject, isMuted); err != nil {
+		return domain.Chat{}, fmt.Errorf("mute chat: %w", err)
+	}
+
+	s.notifier.Notify(principal.Subject)
+
+	return s.chatOf(ctx, chatID, principal.Subject)
+}
+
 func (s *Service) chatOf(ctx context.Context, id, subject string) (domain.Chat, error) {
 	chat, err := s.repository.Chat(ctx, id, subject)
 	if err != nil {

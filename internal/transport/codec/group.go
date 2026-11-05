@@ -20,6 +20,7 @@ const (
 	KindChatSearchData   = Kind(wire.MessageKindChatSearchData)
 	KindChatsChanged     = Kind(wire.MessageKindChatsChanged)
 	KindChatPinSet       = Kind(wire.MessageKindChatPinSet)
+	KindChatMuteSet      = Kind(wire.MessageKindChatMuteSet)
 	KindChatResolve      = Kind(wire.MessageKindChatResolve)
 	KindChatInviteReset  = Kind(wire.MessageKindChatInviteReset)
 	KindUserResolve      = Kind(wire.MessageKindUserResolve)
@@ -148,6 +149,20 @@ func DecodeChatPinSet(body []byte) (string, bool, error) {
 	})
 
 	return id, isPinned, err
+}
+
+func DecodeChatMuteSet(body []byte) (string, bool, error) {
+	var (
+		id      string
+		isMuted bool
+	)
+
+	err := safely(func() {
+		table := wire.GetRootAsChatMuteSet(body, 0)
+		id, isMuted = string(table.ChatId()), table.IsMuted()
+	})
+
+	return id, isMuted, err
 }
 
 func DecodeChatSearch(body []byte) (string, error) {

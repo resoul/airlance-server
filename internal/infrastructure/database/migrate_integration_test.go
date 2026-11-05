@@ -85,7 +85,7 @@ func TestMigrationsGoUpAndDownCleanly(t *testing.T) {
 	}
 
 	state, err = database.MigrationVersion(ctx, address)
-	if err != nil || !state.Applied || state.IsDirty || state.Version != 2 {
+	if err != nil || !state.Applied || state.IsDirty || state.Version != 1 {
 		t.Fatalf("got %+v, %v", state, err)
 	}
 
@@ -93,7 +93,7 @@ func TestMigrationsGoUpAndDownCleanly(t *testing.T) {
 		t.Fatal("the partitions are missing")
 	}
 
-	if err := database.MigrateDown(ctx, address, 2); err != nil {
+	if err := database.MigrateDown(ctx, address, 1); err != nil {
 		t.Fatal(err)
 	}
 

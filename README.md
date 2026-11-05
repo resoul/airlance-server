@@ -4,8 +4,8 @@ The server of the Airlance messenger, written in Go with PostgreSQL. The iOS app
 handshake on top of TLS, and exchanges FlatBuffers messages. People sign in at [airlance-auth](https://github.com/resoul/auth); this
 server only checks the tokens it issues.
 
-The first slice is one person's own profile. Its purpose is to prove the whole chain on something simple: a token, a
-connection, a use case, a row in the database.
+It serves profiles, direct chats, groups and channels, attachments, stories, contacts, privacy, links, scheduled messages, agents, folders, pinned and muted chats. A few jobs run in the background: search indexing, cleaning up stories, sending scheduled
+messages and running agents. Details are in `docs/server` of the main repository.
 
 ## Development
 
@@ -16,6 +16,8 @@ AIRLANCE_SERVER_TEST_DATABASE_URL=postgres://... AIRLANCE_SERVER_TEST_S3_ENDPOIN
 
 ## Not done yet
 
-- Groups, channels and media in messages. So far there are direct chats and text.
-- Files in the app: the server gives signed links to SeaweedFS, but the app does not use them yet.
+- Replies, formatting, reactions, read receipts and deleting or editing messages on the server.
+- Locations, contacts and polls in messages.
+- Push notifications and typing status.
+- Archive, which still lives in the app's memory.
 - A connection handles one request at a time.

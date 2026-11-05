@@ -83,6 +83,7 @@ type Chat struct {
 	Role        Role
 	IsMember    bool
 	IsPinned    bool
+	IsMuted     bool
 }
 
 func (m Message) ForViewer(viewer string) Message {

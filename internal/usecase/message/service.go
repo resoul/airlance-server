@@ -29,6 +29,7 @@ type Repository interface {
 	Members(ctx context.Context, chatID, subject string, limit int) ([]domain.Member, error)
 	ResetInvite(ctx context.Context, chatID, actor, token string) error
 	SetPinned(ctx context.Context, chatID, subject string, isPinned bool) error
+	SetMuted(ctx context.Context, chatID, subject string, isMuted bool) error
 	CheckWrite(ctx context.Context, chatID, sender string) error
 	RoleOf(ctx context.Context, chatID, subject string) (domain.Role, bool, error)
 }

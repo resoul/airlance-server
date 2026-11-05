@@ -80,6 +80,7 @@ enum MessageKind : ushort {
   FoldersData = 76,
   FoldersChanged = 77,
   ChatPinSet = 78,
+  ChatMuteSet = 79,
 }
 
 table Envelope {

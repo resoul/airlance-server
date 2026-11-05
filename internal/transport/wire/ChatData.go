@@ -202,8 +202,20 @@ func (rcv *ChatData) MutateIsPinned(n bool) bool {
 	return rcv._tab.MutateBoolSlot(36, n)
 }
 
+func (rcv *ChatData) IsMuted() bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(38))
+	if o != 0 {
+		return rcv._tab.GetBool(o + rcv._tab.Pos)
+	}
+	return false
+}
+
+func (rcv *ChatData) MutateIsMuted(n bool) bool {
+	return rcv._tab.MutateBoolSlot(38, n)
+}
+
 func ChatDataStart(builder *flatbuffers.Builder) {
-	builder.StartObject(17)
+	builder.StartObject(18)
 }
 func ChatDataAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
@@ -255,6 +267,9 @@ func ChatDataAddIsMember(builder *flatbuffers.Builder, isMember bool) {
 }
 func ChatDataAddIsPinned(builder *flatbuffers.Builder, isPinned bool) {
 	builder.PrependBoolSlot(16, isPinned, false)
+}
+func ChatDataAddIsMuted(builder *flatbuffers.Builder, isMuted bool) {
+	builder.PrependBoolSlot(17, isMuted, false)
 }
 func ChatDataEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

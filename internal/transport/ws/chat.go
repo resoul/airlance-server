@@ -34,6 +34,7 @@ type Messaging interface {
 	Members(ctx context.Context, principal identity.Principal, chatID string) ([]message.Member, error)
 	ResetInvite(ctx context.Context, principal identity.Principal, chatID string) (message.Chat, error)
 	SetPinned(ctx context.Context, principal identity.Principal, chatID string, isPinned bool) (message.Chat, error)
+	SetMuted(ctx context.Context, principal identity.Principal, chatID string, isMuted bool) (message.Chat, error)
 	AddMember(
 		ctx context.Context,
 		principal identity.Principal,
@@ -228,6 +229,7 @@ func chatData(chat message.Chat) codec.ChatData {
 		Role:             int32(chat.Role),
 		IsMember:         chat.IsMember,
 		IsPinned:         chat.IsPinned,
+		IsMuted:          chat.IsMuted,
 	}
 
 	if chat.Last != nil {

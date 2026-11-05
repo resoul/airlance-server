@@ -27,7 +27,7 @@ const chatSelect = `
 			ELSE COALESCE(p.photo_media_id, '') END,
 		CASE WHEN COALESCE(q.photos, 0) = 2 OR b.owner IS NOT NULL OR (q.photos = 1 AND t.owner IS NULL) THEN ''
 			ELSE COALESCE(p.video_media_id, '') END,
-		COALESCE(m.is_pinned, false)
+		COALESCE(m.is_pinned, false), COALESCE(m.is_muted, false)
 	FROM chats c
 	LEFT JOIN chat_members m ON m.chat_id = c.id AND m.subject = $1
 	LEFT JOIN chat_members o ON c.kind = 0 AND o.chat_id = c.id AND o.subject <> $1
@@ -89,7 +89,7 @@ func (r *Messages) selectChats(ctx context.Context, subject, query string, args 
 		err := rows.Scan(
 			&chat.ID, &chat.Kind, &chat.Title, &chat.About, &chat.Link, &chat.InviteToken, &chat.MemberCount, &chat.Role,
 			&chat.IsMember, &last, &peer.Subject, &peer.FirstName, &peer.LastName, &peer.Username,
-			&peer.PhotoMediaID, &peer.VideoMediaID, &chat.IsPinned,
+			&peer.PhotoMediaID, &peer.VideoMediaID, &chat.IsPinned, &chat.IsMuted,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan chat: %w", err)
@@ -525,6 +525,28 @@ func (r *Messages) SetPinned(ctx context.Context, chatID, subject string, isPinn
 	})
 	if err != nil {
 		return fmt.Errorf("set pin: %w", err)
+	}
+
+	return nil
+}
+
+func (r *Messages) SetMuted(ctx context.Context, chatID, subject string, isMuted bool) error {
+	err := pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
+		tag, err := tx.Exec(ctx, `
+			UPDATE chat_members SET is_muted = $3 WHERE chat_id = $1 AND subject = $2`, chatID, subject, isMuted,
+		)
+		if err != nil {
+			return fmt.Errorf("update mute: %w", err)
+		}
+
+		if tag.RowsAffected() == 0 {
+			return domain.ErrChatNotFound
+		}
+
+		return appendUpdate(ctx, tx, subject, update.KindChats)
+	})
+	if err != nil {
+		return fmt.Errorf("set mute: %w", err)
 	}
 
 	return nil

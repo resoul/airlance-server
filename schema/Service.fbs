@@ -158,6 +158,7 @@ table ChatData {
   role: int;
   is_member: bool;
   is_pinned: bool;
+  is_muted: bool;
 }
 
 table ChatOpenDirect {
@@ -513,4 +514,9 @@ table FoldersChanged {
 table ChatPinSet {
   chat_id: string;
   is_pinned: bool;
+}
+
+table ChatMuteSet {
+  chat_id: string;
+  is_muted: bool;
 }

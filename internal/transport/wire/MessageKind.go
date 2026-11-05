@@ -86,6 +86,7 @@ const (
 	MessageKindFoldersData          MessageKind = 76
 	MessageKindFoldersChanged       MessageKind = 77
 	MessageKindChatPinSet           MessageKind = 78
+	MessageKindChatMuteSet          MessageKind = 79
 )
 
 var EnumNamesMessageKind = map[MessageKind]string{
@@ -168,6 +169,7 @@ var EnumNamesMessageKind = map[MessageKind]string{
 	MessageKindFoldersData:          "FoldersData",
 	MessageKindFoldersChanged:       "FoldersChanged",
 	MessageKindChatPinSet:           "ChatPinSet",
+	MessageKindChatMuteSet:          "ChatMuteSet",
 }
 
 var EnumValuesMessageKind = map[string]MessageKind{
@@ -250,6 +252,7 @@ var EnumValuesMessageKind = map[string]MessageKind{
 	"FoldersData":          MessageKindFoldersData,
 	"FoldersChanged":       MessageKindFoldersChanged,
 	"ChatPinSet":           MessageKindChatPinSet,
+	"ChatMuteSet":          MessageKindChatMuteSet,
 }
 
 func (v MessageKind) String() string {

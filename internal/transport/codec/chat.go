@@ -70,6 +70,7 @@ type ChatData struct {
 	Role             int32
 	IsMember         bool
 	IsPinned         bool
+	IsMuted          bool
 }
 
 type MessageSend struct {
@@ -377,6 +378,7 @@ func buildChat(builder *flatbuffers.Builder, data ChatData) flatbuffers.UOffsetT
 	wire.ChatDataAddRole(builder, data.Role)
 	wire.ChatDataAddIsMember(builder, data.IsMember)
 	wire.ChatDataAddIsPinned(builder, data.IsPinned)
+	wire.ChatDataAddIsMuted(builder, data.IsMuted)
 	wire.ChatDataAddChatId(builder, chat)
 	wire.ChatDataAddPeerSubject(builder, subject)
 	wire.ChatDataAddPeerFirstName(builder, first)
@@ -409,6 +411,7 @@ func readChat(table *wire.ChatData) ChatData {
 		Role:             table.Role(),
 		IsMember:         table.IsMember(),
 		IsPinned:         table.IsPinned(),
+		IsMuted:          table.IsMuted(),
 	}
 
 	if last := table.LastMessage(nil); last != nil {
