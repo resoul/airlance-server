@@ -87,6 +87,40 @@ const (
 	MessageKindFoldersChanged       MessageKind = 77
 	MessageKindChatPinSet           MessageKind = 78
 	MessageKindChatMuteSet          MessageKind = 79
+	MessageKindMessageEdit          MessageKind = 80
+	MessageKindMessageDelete        MessageKind = 81
+	MessageKindMessagesDeleted      MessageKind = 82
+	MessageKindMessagePinSet        MessageKind = 83
+	MessageKindPinsGet              MessageKind = 84
+	MessageKindPinsData             MessageKind = 85
+	MessageKindPostStatsGet         MessageKind = 86
+	MessageKindPostStatsData        MessageKind = 87
+	MessageKindChatReadSet          MessageKind = 88
+	MessageKindReadData             MessageKind = 89
+	MessageKindReactionSet          MessageKind = 90
+	MessageKindPollVote             MessageKind = 91
+	MessageKindPollClose            MessageKind = 92
+	MessageKindChatArchiveSet       MessageKind = 93
+	MessageKindDraftSet             MessageKind = 94
+	MessageKindDraftData            MessageKind = 95
+	MessageKindSettingsGet          MessageKind = 96
+	MessageKindSettingsPut          MessageKind = 97
+	MessageKindSettingsData         MessageKind = 98
+	MessageKindWallpapersGet        MessageKind = 99
+	MessageKindWallpapersData       MessageKind = 100
+	MessageKindChatDeliveredSet     MessageKind = 101
+	MessageKindChatMemberUnban      MessageKind = 102
+	MessageKindChatBansGet          MessageKind = 103
+	MessageKindChatRightsSet        MessageKind = 104
+	MessageKindChatInfoSet          MessageKind = 105
+	MessageKindChatRulesSet         MessageKind = 106
+	MessageKindChatLogGet           MessageKind = 107
+	MessageKindChatLogData          MessageKind = 108
+	MessageKindChatReadersGet       MessageKind = 109
+	MessageKindTypingSet            MessageKind = 110
+	MessageKindTypingEvent          MessageKind = 111
+	MessageKindLinkPreviewGet       MessageKind = 112
+	MessageKindLinkPreviewData      MessageKind = 113
 )
 
 var EnumNamesMessageKind = map[MessageKind]string{
@@ -170,6 +204,40 @@ var EnumNamesMessageKind = map[MessageKind]string{
 	MessageKindFoldersChanged:       "FoldersChanged",
 	MessageKindChatPinSet:           "ChatPinSet",
 	MessageKindChatMuteSet:          "ChatMuteSet",
+	MessageKindMessageEdit:          "MessageEdit",
+	MessageKindMessageDelete:        "MessageDelete",
+	MessageKindMessagesDeleted:      "MessagesDeleted",
+	MessageKindMessagePinSet:        "MessagePinSet",
+	MessageKindPinsGet:              "PinsGet",
+	MessageKindPinsData:             "PinsData",
+	MessageKindPostStatsGet:         "PostStatsGet",
+	MessageKindPostStatsData:        "PostStatsData",
+	MessageKindChatReadSet:          "ChatReadSet",
+	MessageKindReadData:             "ReadData",
+	MessageKindReactionSet:          "ReactionSet",
+	MessageKindPollVote:             "PollVote",
+	MessageKindPollClose:            "PollClose",
+	MessageKindChatArchiveSet:       "ChatArchiveSet",
+	MessageKindDraftSet:             "DraftSet",
+	MessageKindDraftData:            "DraftData",
+	MessageKindSettingsGet:          "SettingsGet",
+	MessageKindSettingsPut:          "SettingsPut",
+	MessageKindSettingsData:         "SettingsData",
+	MessageKindWallpapersGet:        "WallpapersGet",
+	MessageKindWallpapersData:       "WallpapersData",
+	MessageKindChatDeliveredSet:     "ChatDeliveredSet",
+	MessageKindChatMemberUnban:      "ChatMemberUnban",
+	MessageKindChatBansGet:          "ChatBansGet",
+	MessageKindChatRightsSet:        "ChatRightsSet",
+	MessageKindChatInfoSet:          "ChatInfoSet",
+	MessageKindChatRulesSet:         "ChatRulesSet",
+	MessageKindChatLogGet:           "ChatLogGet",
+	MessageKindChatLogData:          "ChatLogData",
+	MessageKindChatReadersGet:       "ChatReadersGet",
+	MessageKindTypingSet:            "TypingSet",
+	MessageKindTypingEvent:          "TypingEvent",
+	MessageKindLinkPreviewGet:       "LinkPreviewGet",
+	MessageKindLinkPreviewData:      "LinkPreviewData",
 }
 
 var EnumValuesMessageKind = map[string]MessageKind{
@@ -253,6 +321,40 @@ var EnumValuesMessageKind = map[string]MessageKind{
 	"FoldersChanged":       MessageKindFoldersChanged,
 	"ChatPinSet":           MessageKindChatPinSet,
 	"ChatMuteSet":          MessageKindChatMuteSet,
+	"MessageEdit":          MessageKindMessageEdit,
+	"MessageDelete":        MessageKindMessageDelete,
+	"MessagesDeleted":      MessageKindMessagesDeleted,
+	"MessagePinSet":        MessageKindMessagePinSet,
+	"PinsGet":              MessageKindPinsGet,
+	"PinsData":             MessageKindPinsData,
+	"PostStatsGet":         MessageKindPostStatsGet,
+	"PostStatsData":        MessageKindPostStatsData,
+	"ChatReadSet":          MessageKindChatReadSet,
+	"ReadData":             MessageKindReadData,
+	"ReactionSet":          MessageKindReactionSet,
+	"PollVote":             MessageKindPollVote,
+	"PollClose":            MessageKindPollClose,
+	"ChatArchiveSet":       MessageKindChatArchiveSet,
+	"DraftSet":             MessageKindDraftSet,
+	"DraftData":            MessageKindDraftData,
+	"SettingsGet":          MessageKindSettingsGet,
+	"SettingsPut":          MessageKindSettingsPut,
+	"SettingsData":         MessageKindSettingsData,
+	"WallpapersGet":        MessageKindWallpapersGet,
+	"WallpapersData":       MessageKindWallpapersData,
+	"ChatDeliveredSet":     MessageKindChatDeliveredSet,
+	"ChatMemberUnban":      MessageKindChatMemberUnban,
+	"ChatBansGet":          MessageKindChatBansGet,
+	"ChatRightsSet":        MessageKindChatRightsSet,
+	"ChatInfoSet":          MessageKindChatInfoSet,
+	"ChatRulesSet":         MessageKindChatRulesSet,
+	"ChatLogGet":           MessageKindChatLogGet,
+	"ChatLogData":          MessageKindChatLogData,
+	"ChatReadersGet":       MessageKindChatReadersGet,
+	"TypingSet":            MessageKindTypingSet,
+	"TypingEvent":          MessageKindTypingEvent,
+	"LinkPreviewGet":       MessageKindLinkPreviewGet,
+	"LinkPreviewData":      MessageKindLinkPreviewData,
 }
 
 func (v MessageKind) String() string {

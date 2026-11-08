@@ -12,9 +12,19 @@ import (
 )
 
 type memoryRepository struct {
-	saved   map[string]domain.Object
-	public  map[string]bool
-	stories map[string]bool
+	saved    map[string]domain.Object
+	public   map[string]bool
+	stories  map[string]bool
+	catalog  map[string]bool
+	previews map[string]bool
+}
+
+func (m *memoryRepository) IsCatalogMedia(_ context.Context, id string) (bool, error) {
+	return m.catalog[id], nil
+}
+
+func (m *memoryRepository) IsPreviewMedia(_ context.Context, id string) (bool, error) {
+	return m.previews[id], nil
 }
 
 func (m *memoryRepository) IsChatMedia(context.Context, string, string) (bool, error) {
@@ -186,5 +196,39 @@ func TestAnAvatarIsOpenToEveryoneAndStopsBeingOpenWhenReplaced(t *testing.T) {
 	repository.public[ticket.MediaID] = false
 	if _, err := service.RequestDownload(ctx, boris, ticket.MediaID); !errors.Is(err, domain.ErrNotFound) {
 		t.Fatalf("a replaced avatar: %v", err)
+	}
+}
+
+func TestACatalogFileIsOpenToAnyone(t *testing.T) {
+	t.Parallel()
+
+	service, repository := newService(fakeStore{})
+	repository.saved["w"] = domain.Object{ID: "w", Owner: "system:wallpapers", Size: 10}
+	repository.catalog = map[string]bool{"w": true}
+
+	if _, err := service.RequestDownload(context.Background(), anna, "w"); err != nil {
+		t.Fatalf("a catalog file was refused: %v", err)
+	}
+
+	repository.catalog = nil
+	if _, err := service.RequestDownload(context.Background(), anna, "w"); err == nil {
+		t.Fatal("a file left the catalog and is still open")
+	}
+}
+
+func TestALinkPreviewImageIsOpenToAnyone(t *testing.T) {
+	t.Parallel()
+
+	service, repository := newService(fakeStore{})
+	repository.saved["p"] = domain.Object{ID: "p", Owner: "link-preview", Size: 10}
+	repository.previews = map[string]bool{"p": true}
+
+	if _, err := service.RequestDownload(context.Background(), anna, "p"); err != nil {
+		t.Fatalf("a preview image was refused: %v", err)
+	}
+
+	repository.previews = nil
+	if _, err := service.RequestDownload(context.Background(), anna, "p"); err == nil {
+		t.Fatal("an image of a forgotten preview is still open")
 	}
 }

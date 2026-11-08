@@ -339,7 +339,7 @@ func TestAnAgentStopsActingWhenItsOwnerLosesRights(t *testing.T) {
 	saveProfiles(s.ctx, t, s.pool, "owner", "admin", "petro")
 	chat := s.group(t, "owner", "admin", "petro")
 
-	if _, err := s.messages.AddMember(s.ctx, person("owner"), chat.ID, "admin", domain.RoleAdmin); err != nil {
+	if _, err := s.messages.AddMember(s.ctx, person("owner"), chat.ID, "admin", domain.RoleAdmin, domain.DefaultAdminRights); err != nil {
 		t.Fatal(err)
 	}
 
@@ -347,7 +347,7 @@ func TestAnAgentStopsActingWhenItsOwnerLosesRights(t *testing.T) {
 		Name: "Цены", ChatID: chat.ID, Trigger: agent.TriggerKeyword, Keyword: "цена", Text: "Ответ",
 	}, false)
 
-	if _, err := s.messages.AddMember(s.ctx, person("owner"), chat.ID, "admin", domain.RoleMember); err != nil {
+	if _, err := s.messages.AddMember(s.ctx, person("owner"), chat.ID, "admin", domain.RoleMember, 0); err != nil {
 		t.Fatal(err)
 	}
 

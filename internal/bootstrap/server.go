@@ -13,6 +13,7 @@ import (
 	"go.airlance.org/server/internal/infrastructure/meili"
 	"go.airlance.org/server/internal/infrastructure/objectstore"
 	"go.airlance.org/server/internal/infrastructure/oidc"
+	"go.airlance.org/server/internal/infrastructure/webfetch"
 	"go.airlance.org/server/internal/repository/postgres"
 	"go.airlance.org/server/internal/transport/httpapi"
 	"go.airlance.org/server/internal/transport/wireauth"
@@ -21,12 +22,14 @@ import (
 	"go.airlance.org/server/internal/usecase/contact"
 	"go.airlance.org/server/internal/usecase/directory"
 	"go.airlance.org/server/internal/usecase/folder"
+	"go.airlance.org/server/internal/usecase/linkpreview"
 	"go.airlance.org/server/internal/usecase/media"
 	"go.airlance.org/server/internal/usecase/message"
 	"go.airlance.org/server/internal/usecase/privacy"
 	"go.airlance.org/server/internal/usecase/profile"
 	"go.airlance.org/server/internal/usecase/scheduled"
 	"go.airlance.org/server/internal/usecase/session"
+	"go.airlance.org/server/internal/usecase/settings"
 	"go.airlance.org/server/internal/usecase/story"
 	"go.airlance.org/server/internal/usecase/update"
 )
@@ -107,6 +110,10 @@ func Serve(ctx context.Context, cfg config.Config, logger *slog.Logger) error {
 		Scheduler: scheduler,
 		Agents:    agents,
 		Folders:   folder.New(postgres.NewFolders(pool), hub, time.Now),
+		Settings:  settings.New(postgres.NewSettings(pool), hub, time.Now),
+		Previews: linkpreview.New(
+			postgres.NewLinkPreviews(pool), webfetch.New(), files, postgres.NewMedia(pool), time.Now,
+		),
 	}
 	socket := ws.NewHandler(ctx, secure, sessions, services, ws.DefaultLimits(), logger)
 

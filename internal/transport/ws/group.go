@@ -11,42 +11,13 @@ import (
 	usecase "go.airlance.org/server/internal/usecase/message"
 )
 
-func (h *Handler) groupRequest(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {
-	switch request.Kind {
-	case codec.KindChatCreate:
-		return h.chatCreate(ctx, principal, request)
-	case codec.KindChatJoin:
-		return h.chatJoin(ctx, principal, request)
-	case codec.KindChatLeave:
-		return h.chatLeave(ctx, principal, request)
-	case codec.KindChatMembersGet:
-		return h.chatMembersGet(ctx, principal, request)
-	case codec.KindChatMemberAdd:
-		return h.chatMemberAdd(ctx, principal, request)
-	case codec.KindChatMemberRemove:
-		return h.chatMemberRemove(ctx, principal, request)
-	case codec.KindChatResolve:
-		return h.chatResolve(ctx, principal, request)
-	case codec.KindChatPinSet:
-		return h.chatPinSet(ctx, principal, request)
-	case codec.KindChatMuteSet:
-		return h.chatMuteSet(ctx, principal, request)
-	case codec.KindChatInviteReset:
-		return h.chatInviteReset(ctx, principal, request)
-	case codec.KindUserResolve:
-		return h.userResolve(ctx, principal, request)
-	default:
-		return h.chatSearch(ctx, principal, request)
-	}
-}
-
 func (h *Handler) chatCreate(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {
 	create, err := codec.DecodeChatCreate(request.Body)
 	if err != nil {
 		return failure(request, codeInvalid, "invalid body")
 	}
 
-	chat, err := h.messaging.Create(ctx, principal, usecase.NewChat{
+	chat, err := h.chatList.Create(ctx, principal, usecase.NewChat{
 		ClientID: create.ClientID,
 		Kind:     message.Kind(create.Kind),
 		Title:    create.Title,
@@ -67,7 +38,7 @@ func (h *Handler) chatJoin(ctx context.Context, principal identity.Principal, re
 		return failure(request, codeInvalid, "invalid body")
 	}
 
-	chat, err := h.messaging.Join(ctx, principal, code)
+	chat, err := h.chatList.Join(ctx, principal, code)
 	if err != nil {
 		return h.chatFailure(ctx, request, err)
 	}
@@ -81,7 +52,7 @@ func (h *Handler) chatLeave(ctx context.Context, principal identity.Principal, r
 		return failure(request, codeInvalid, "invalid body")
 	}
 
-	if err := h.messaging.Leave(ctx, principal, id); err != nil {
+	if err := h.chatList.Leave(ctx, principal, id); err != nil {
 		return h.chatFailure(ctx, request, err)
 	}
 
@@ -94,7 +65,7 @@ func (h *Handler) chatMembersGet(ctx context.Context, principal identity.Princip
 		return failure(request, codeInvalid, "invalid body")
 	}
 
-	members, err := h.messaging.Members(ctx, principal, id)
+	members, err := h.admin.Members(ctx, principal, id)
 
 	return h.membersReply(ctx, request, members, err)
 }
@@ -105,7 +76,9 @@ func (h *Handler) chatMemberAdd(ctx context.Context, principal identity.Principa
 		return failure(request, codeInvalid, "invalid body")
 	}
 
-	members, err := h.messaging.AddMember(ctx, principal, change.ChatID, change.Subject, message.Role(change.Role))
+	members, err := h.admin.AddMember(
+		ctx, principal, change.ChatID, change.Subject, message.Role(change.Role), message.Rights(change.Rights),
+	)
 
 	return h.membersReply(ctx, request, members, err)
 }
@@ -116,7 +89,7 @@ func (h *Handler) chatMemberRemove(ctx context.Context, principal identity.Princ
 		return failure(request, codeInvalid, "invalid body")
 	}
 
-	members, err := h.messaging.RemoveMember(ctx, principal, change.ChatID, change.Subject)
+	members, err := h.admin.RemoveMember(ctx, principal, change.ChatID, change.Subject, change.Ban)
 
 	return h.membersReply(ctx, request, members, err)
 }
@@ -141,6 +114,7 @@ func (h *Handler) membersReply(
 			PhotoMediaID: next.Peer.PhotoMediaID,
 			VideoMediaID: next.Peer.VideoMediaID,
 			Role:         int32(next.Role),
+			Rights:       int64(next.Rights),
 		}
 	}
 
@@ -153,7 +127,7 @@ func (h *Handler) chatPinSet(ctx context.Context, principal identity.Principal, 
 		return failure(request, codeInvalid, "invalid body")
 	}
 
-	chat, err := h.messaging.SetPinned(ctx, principal, id, isPinned)
+	chat, err := h.chatList.SetPinned(ctx, principal, id, isPinned)
 	if err != nil {
 		return h.chatFailure(ctx, request, err)
 	}
@@ -167,7 +141,7 @@ func (h *Handler) chatMuteSet(ctx context.Context, principal identity.Principal,
 		return failure(request, codeInvalid, "invalid body")
 	}
 
-	chat, err := h.messaging.SetMuted(ctx, principal, id, isMuted)
+	chat, err := h.chatList.SetMuted(ctx, principal, id, isMuted)
 	if err != nil {
 		return h.chatFailure(ctx, request, err)
 	}
@@ -199,7 +173,7 @@ func (h *Handler) chatInviteReset(ctx context.Context, principal identity.Princi
 		return failure(request, codeInvalid, "invalid body")
 	}
 
-	chat, err := h.messaging.ResetInvite(ctx, principal, id)
+	chat, err := h.chatList.ResetInvite(ctx, principal, id)
 	if err != nil {
 		return h.chatFailure(ctx, request, err)
 	}
@@ -249,4 +223,73 @@ func (h *Handler) chatSearch(ctx context.Context, principal identity.Principal, 
 	}
 
 	return reply(request, codec.KindChatSearchData, codec.EncodeChatSearchData(rows))
+}
+
+func (h *Handler) chatMemberUnban(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {
+	change, err := codec.DecodeChatMemberUnban(request.Body)
+	if err != nil {
+		return failure(request, codeInvalid, "invalid body")
+	}
+
+	members, err := h.admin.Unban(ctx, principal, change.ChatID, change.Subject)
+
+	return h.membersReply(ctx, request, members, err)
+}
+
+func (h *Handler) chatBansGet(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {
+	id, err := codec.DecodeChatBansGet(request.Body)
+	if err != nil {
+		return failure(request, codeInvalid, "invalid body")
+	}
+
+	members, err := h.admin.Bans(ctx, principal, id)
+
+	return h.membersReply(ctx, request, members, err)
+}
+
+func (h *Handler) chatRightsSet(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {
+	id, rights, err := codec.DecodeChatRightsSet(request.Body)
+	if err != nil {
+		return failure(request, codeInvalid, "invalid body")
+	}
+
+	chat, err := h.admin.SetMemberRights(ctx, principal, id, message.Rights(rights))
+	if err != nil {
+		return h.chatFailure(ctx, request, err)
+	}
+
+	return reply(request, codec.KindChatData, codec.EncodeChatData(chatData(chat)))
+}
+
+func (h *Handler) chatInfoSet(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {
+	info, err := codec.DecodeChatInfoSet(request.Body)
+	if err != nil {
+		return failure(request, codeInvalid, "invalid body")
+	}
+
+	chat, err := h.admin.SetInfo(ctx, principal, info.ChatID, message.ChatInfo{
+		Title: info.Title, About: info.About, Link: info.Link,
+	})
+	if err != nil {
+		return h.chatFailure(ctx, request, err)
+	}
+
+	return reply(request, codec.KindChatData, codec.EncodeChatData(chatData(chat)))
+}
+
+func (h *Handler) chatRulesSet(ctx context.Context, principal identity.Principal, request codec.Frame) codec.Frame {
+	id, rules, err := codec.DecodeChatRulesSet(request.Body)
+	if err != nil {
+		return failure(request, codeInvalid, "invalid body")
+	}
+
+	chat, err := h.admin.SetRules(ctx, principal, id, message.ChatRules{
+		NoCopy: rules.NoCopy, Signs: rules.Signs, ReactionsMode: rules.ReactionsMode,
+		Reactions: rules.Reactions, PerPost: rules.PerPost,
+	})
+	if err != nil {
+		return h.chatFailure(ctx, request, err)
+	}
+
+	return reply(request, codec.KindChatData, codec.EncodeChatData(chatData(chat)))
 }

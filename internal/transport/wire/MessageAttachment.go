@@ -175,8 +175,40 @@ func (rcv *MessageAttachment) Performer() []byte {
 	return nil
 }
 
+func (rcv *MessageAttachment) Latitude() float64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(26))
+	if o != 0 {
+		return rcv._tab.GetFloat64(o + rcv._tab.Pos)
+	}
+	return 0.0
+}
+
+func (rcv *MessageAttachment) MutateLatitude(n float64) bool {
+	return rcv._tab.MutateFloat64Slot(26, n)
+}
+
+func (rcv *MessageAttachment) Longitude() float64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(28))
+	if o != 0 {
+		return rcv._tab.GetFloat64(o + rcv._tab.Pos)
+	}
+	return 0.0
+}
+
+func (rcv *MessageAttachment) MutateLongitude(n float64) bool {
+	return rcv._tab.MutateFloat64Slot(28, n)
+}
+
+func (rcv *MessageAttachment) Phone() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(30))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
 func MessageAttachmentStart(builder *flatbuffers.Builder) {
-	builder.StartObject(11)
+	builder.StartObject(14)
 }
 func MessageAttachmentAddKind(builder *flatbuffers.Builder, kind int32) {
 	builder.PrependInt32Slot(0, kind, 0)
@@ -213,6 +245,15 @@ func MessageAttachmentAddTitle(builder *flatbuffers.Builder, title flatbuffers.U
 }
 func MessageAttachmentAddPerformer(builder *flatbuffers.Builder, performer flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(10, flatbuffers.UOffsetT(performer), 0)
+}
+func MessageAttachmentAddLatitude(builder *flatbuffers.Builder, latitude float64) {
+	builder.PrependFloat64Slot(11, latitude, 0.0)
+}
+func MessageAttachmentAddLongitude(builder *flatbuffers.Builder, longitude float64) {
+	builder.PrependFloat64Slot(12, longitude, 0.0)
+}
+func MessageAttachmentAddPhone(builder *flatbuffers.Builder, phone flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(13, flatbuffers.UOffsetT(phone), 0)
 }
 func MessageAttachmentEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

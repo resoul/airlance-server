@@ -16,6 +16,11 @@ const (
 	KindChatMembersData  = Kind(wire.MessageKindChatMembersData)
 	KindChatMemberAdd    = Kind(wire.MessageKindChatMemberAdd)
 	KindChatMemberRemove = Kind(wire.MessageKindChatMemberRemove)
+	KindChatMemberUnban  = Kind(wire.MessageKindChatMemberUnban)
+	KindChatBansGet      = Kind(wire.MessageKindChatBansGet)
+	KindChatRightsSet    = Kind(wire.MessageKindChatRightsSet)
+	KindChatInfoSet      = Kind(wire.MessageKindChatInfoSet)
+	KindChatRulesSet     = Kind(wire.MessageKindChatRulesSet)
 	KindChatSearch       = Kind(wire.MessageKindChatSearch)
 	KindChatSearchData   = Kind(wire.MessageKindChatSearchData)
 	KindChatsChanged     = Kind(wire.MessageKindChatsChanged)
@@ -43,12 +48,15 @@ type ChatMemberData struct {
 	PhotoMediaID string
 	VideoMediaID string
 	Role         int32
+	Rights       int64
 }
 
 type ChatMemberChange struct {
 	ChatID  string
 	Subject string
 	Role    int32
+	Rights  int64
+	Ban     bool
 }
 
 func DecodeChatCreate(body []byte) (ChatCreate, error) {
@@ -210,7 +218,9 @@ func DecodeChatMemberAdd(body []byte) (ChatMemberChange, error) {
 
 	err := safely(func() {
 		table := wire.GetRootAsChatMemberAdd(body, 0)
-		change = ChatMemberChange{ChatID: string(table.ChatId()), Subject: string(table.Subject()), Role: table.Role()}
+		change = ChatMemberChange{
+			ChatID: string(table.ChatId()), Subject: string(table.Subject()), Role: table.Role(), Rights: table.Rights(),
+		}
 	})
 
 	return change, err
@@ -221,7 +231,7 @@ func DecodeChatMemberRemove(body []byte) (ChatMemberChange, error) {
 
 	err := safely(func() {
 		table := wire.GetRootAsChatMemberRemove(body, 0)
-		change = ChatMemberChange{ChatID: string(table.ChatId()), Subject: string(table.Subject())}
+		change = ChatMemberChange{ChatID: string(table.ChatId()), Subject: string(table.Subject()), Ban: table.Ban()}
 	})
 
 	return change, err
@@ -246,6 +256,7 @@ func EncodeChatMembersData(members []ChatMemberData) []byte {
 		wire.ChatMemberDataAddPhotoMediaId(builder, photo)
 		wire.ChatMemberDataAddVideoMediaId(builder, video)
 		wire.ChatMemberDataAddRole(builder, next.Role)
+		wire.ChatMemberDataAddRights(builder, next.Rights)
 		offsets[index] = wire.ChatMemberDataEnd(builder)
 	}
 
@@ -289,6 +300,7 @@ func DecodeChatMembersData(body []byte) ([]ChatMemberData, error) {
 				PhotoMediaID: string(row.PhotoMediaId()),
 				VideoMediaID: string(row.VideoMediaId()),
 				Role:         row.Role(),
+				Rights:       row.Rights(),
 			}
 		}
 	})
@@ -324,4 +336,75 @@ func EncodeChatsChanged() []byte {
 	builder.Finish(wire.ChatsChangedEnd(builder))
 
 	return builder.FinishedBytes()
+}
+
+func DecodeChatMemberUnban(body []byte) (ChatMemberChange, error) {
+	var change ChatMemberChange
+
+	err := safely(func() {
+		table := wire.GetRootAsChatMemberUnban(body, 0)
+		change = ChatMemberChange{ChatID: string(table.ChatId()), Subject: string(table.Subject())}
+	})
+
+	return change, err
+}
+
+func DecodeChatBansGet(body []byte) (string, error) {
+	var chatID string
+
+	err := safely(func() {
+		chatID = string(wire.GetRootAsChatBansGet(body, 0).ChatId())
+	})
+
+	return chatID, err
+}
+
+func DecodeChatRightsSet(body []byte) (string, int64, error) {
+	var (
+		chatID string
+		rights int64
+	)
+
+	err := safely(func() {
+		table := wire.GetRootAsChatRightsSet(body, 0)
+		chatID, rights = string(table.ChatId()), table.MemberRights()
+	})
+
+	return chatID, rights, err
+}
+
+type ChatInfoSet struct {
+	ChatID string
+	Title  string
+	About  string
+	Link   string
+}
+
+func DecodeChatInfoSet(body []byte) (ChatInfoSet, error) {
+	var info ChatInfoSet
+
+	err := safely(func() {
+		table := wire.GetRootAsChatInfoSet(body, 0)
+		info = ChatInfoSet{
+			ChatID: string(table.ChatId()), Title: string(table.Title()),
+			About: string(table.About()), Link: string(table.Link()),
+		}
+	})
+
+	return info, err
+}
+
+func DecodeChatRulesSet(body []byte) (string, ChatRules, error) {
+	var (
+		chatID string
+		rules  ChatRules
+	)
+
+	err := safely(func() {
+		table := wire.GetRootAsChatRulesSet(body, 0)
+		chatID = string(table.ChatId())
+		rules = readRules(table.Rules(nil))
+	})
+
+	return chatID, rules, err
 }

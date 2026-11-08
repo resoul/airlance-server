@@ -22,6 +22,8 @@ type Repository interface {
 	IsProfileMedia(ctx context.Context, id, viewer string) (bool, error)
 	IsVisibleStoryMedia(ctx context.Context, id, viewer string, now time.Time) (bool, error)
 	IsChatMedia(ctx context.Context, id, viewer string) (bool, error)
+	IsCatalogMedia(ctx context.Context, id string) (bool, error)
+	IsPreviewMedia(ctx context.Context, id string) (bool, error)
 }
 
 type Store interface {
@@ -96,6 +98,16 @@ func (s *Service) RequestDownload(ctx context.Context, principal identity.Princi
 }
 
 func (s *Service) mayRead(ctx context.Context, id, viewer string) (bool, error) {
+	listed, err := s.repository.IsCatalogMedia(ctx, id)
+	if err != nil || listed {
+		return listed, err
+	}
+
+	preview, err := s.repository.IsPreviewMedia(ctx, id)
+	if err != nil || preview {
+		return preview, err
+	}
+
 	public, err := s.repository.IsProfileMedia(ctx, id, viewer)
 	if err != nil || public {
 		return public, err

@@ -66,7 +66,13 @@ func (h *Handler) subscribe(
 
 	*subscribed = true
 
-	go h.follow(ctx, l, principal, after)
+	h.typing.add(principal.Subject, l)
+
+	go func() {
+		defer h.typing.remove(principal.Subject, l)
+
+		h.follow(ctx, l, principal, after)
+	}()
 
 	return nil
 }
@@ -149,6 +155,30 @@ func updateFrame(next update.Update) codec.Frame {
 
 	if next.Kind == update.KindStories {
 		return codec.Frame{Seq: next.Seq, Kind: codec.KindStoriesChanged, Body: codec.EncodeStoriesChanged()}
+	}
+
+	if next.Kind == update.KindSettings {
+		return codec.Frame{Seq: next.Seq, Kind: codec.KindSettingsData, Body: settingsBody(next.Setting)}
+	}
+
+	if next.Kind == update.KindDraft {
+		return codec.Frame{Seq: next.Seq, Kind: codec.KindDraftData, Body: draftBody(next.Draft)}
+	}
+
+	if next.Kind == update.KindRead {
+		return codec.Frame{Seq: next.Seq, Kind: codec.KindReadData, Body: readBody(next.Read)}
+	}
+
+	if next.Kind == update.KindPins {
+		body := codec.EncodePinsData(next.Message.ChatID, next.Pins)
+
+		return codec.Frame{Seq: next.Seq, Kind: codec.KindPinsData, Body: body}
+	}
+
+	if next.Kind == update.KindGone {
+		body := codec.EncodeMessagesDeleted(next.Message.ChatID, []int64{next.Message.ID})
+
+		return codec.Frame{Seq: next.Seq, Kind: codec.KindMessagesDeleted, Body: body}
 	}
 
 	if next.Kind == update.KindMessage {

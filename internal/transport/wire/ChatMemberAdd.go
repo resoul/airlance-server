@@ -69,8 +69,20 @@ func (rcv *ChatMemberAdd) MutateRole(n int32) bool {
 	return rcv._tab.MutateInt32Slot(8, n)
 }
 
+func (rcv *ChatMemberAdd) Rights() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatMemberAdd) MutateRights(n int64) bool {
+	return rcv._tab.MutateInt64Slot(10, n)
+}
+
 func ChatMemberAddStart(builder *flatbuffers.Builder) {
-	builder.StartObject(3)
+	builder.StartObject(4)
 }
 func ChatMemberAddAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
@@ -80,6 +92,9 @@ func ChatMemberAddAddSubject(builder *flatbuffers.Builder, subject flatbuffers.U
 }
 func ChatMemberAddAddRole(builder *flatbuffers.Builder, role int32) {
 	builder.PrependInt32Slot(2, role, 0)
+}
+func ChatMemberAddAddRights(builder *flatbuffers.Builder, rights int64) {
+	builder.PrependInt64Slot(3, rights, 0)
 }
 func ChatMemberAddEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

@@ -44,6 +44,7 @@ var people = []person{
 const (
 	hiddenFromSearch = 10
 	contactsOnly     = 11
+	archivedFrom     = 8
 )
 
 var rooms = []room{

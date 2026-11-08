@@ -116,11 +116,11 @@ func TestAChannelOnlyLetsAdminsPostAndHidesWhoWrote(t *testing.T) {
 		t.Fatalf("a subscriber posted: %v", err)
 	}
 
-	if _, err := service.AddMember(ctx, person("reader"), chat.ID, "admin", domain.RoleAdmin); !errors.Is(err, domain.ErrNotAllowed) {
+	if _, err := service.AddMember(ctx, person("reader"), chat.ID, "admin", domain.RoleAdmin, domain.DefaultAdminRights); !errors.Is(err, domain.ErrNotAllowed) {
 		t.Fatalf("a subscriber made an admin: %v", err)
 	}
 
-	if _, err := service.AddMember(ctx, person("owner"), chat.ID, "admin", domain.RoleAdmin); err != nil {
+	if _, err := service.AddMember(ctx, person("owner"), chat.ID, "admin", domain.RoleAdmin, domain.DefaultAdminRights); err != nil {
 		t.Fatal(err)
 	}
 
@@ -214,11 +214,11 @@ func TestTheOwnerLeavingPassesTheChatOn(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if _, err := service.RemoveMember(ctx, person("first"), chat.ID, "second"); !errors.Is(err, domain.ErrNotAllowed) {
+	if _, err := service.RemoveMember(ctx, person("first"), chat.ID, "second", false); !errors.Is(err, domain.ErrNotAllowed) {
 		t.Fatalf("a member removed someone: %v", err)
 	}
 
-	if _, err := service.AddMember(ctx, person("owner"), chat.ID, "second", domain.RoleAdmin); err != nil {
+	if _, err := service.AddMember(ctx, person("owner"), chat.ID, "second", domain.RoleAdmin, domain.DefaultAdminRights); err != nil {
 		t.Fatal(err)
 	}
 
@@ -380,8 +380,22 @@ func TestSeedCanBeRepeatedAndCleanedWithoutBreakingTheJournal(t *testing.T) {
 		kinds[chat.Kind]++
 	}
 
-	if kinds[domain.KindGroup] != 2 || kinds[domain.KindChannel] != 2 || kinds[domain.KindDirect] != 3 {
+	if kinds[domain.KindGroup] != 2 || kinds[domain.KindChannel] != 2 || kinds[domain.KindDirect] != 4 {
 		t.Fatalf("got %v in %+v", kinds, chats)
+	}
+
+	var polls, reactions, pins, drafts, archived, threads int
+
+	err = pool.QueryRow(ctx, `SELECT
+		(SELECT count(*) FROM messages WHERE poll IS NOT NULL AND chat_id IN (SELECT chat_id FROM chat_members WHERE subject = 'viewer')),
+		(SELECT count(*) FROM message_reactions),
+		(SELECT count(*) FROM chat_pins),
+		(SELECT count(*) FROM chat_drafts WHERE subject = 'viewer'),
+		(SELECT count(*) FROM chat_members WHERE subject = 'viewer' AND is_archived),
+		(SELECT count(*) FROM messages WHERE thread_id <> 0)`).Scan(&polls, &reactions, &pins, &drafts, &archived, &threads)
+	if err != nil || polls != 2 || reactions != 8 || pins != 1 || drafts != 1 || archived != 1 || threads != 3 {
+		t.Fatalf("features: polls %d, reactions %d, pins %d, drafts %d, archived %d, comments %d, %v",
+			polls, reactions, pins, drafts, archived, threads, err)
 	}
 
 	var saved []contact.Contact

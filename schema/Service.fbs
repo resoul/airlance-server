@@ -122,6 +122,41 @@ table MessageAttachment {
   waveform: [ubyte];
   title: string;
   performer: string;
+  latitude: double;
+  longitude: double;
+  phone: string;
+}
+
+table MessageEntity {
+  kind: int;
+  offset: int;
+  length: int;
+  user_id: string;
+}
+
+table ReactionCount {
+  emoji: string;
+  count: int;
+}
+
+table PollOption {
+  text: string;
+  votes: int;
+  voters: [PostCommenter];
+}
+
+table PollData {
+  question: string;
+  options: [PollOption];
+  anonymous: bool;
+  multiple: bool;
+  is_quiz: bool;
+  correct_option: int;
+  explanation: string;
+  close_at_unix_ms: long;
+  is_closed: bool;
+  total_voters: int;
+  my_choices: [int];
 }
 
 table MessageData {
@@ -138,6 +173,13 @@ table MessageData {
   agent_name: string;
   forward_name: string;
   attachments: [MessageAttachment];
+  reply_to_id: long;
+  entities: [MessageEntity];
+  edited_at_unix_ms: long;
+  thread_id: long;
+  reactions: [ReactionCount];
+  my_reaction: string;
+  poll: PollData;
 }
 
 table ChatData {
@@ -159,6 +201,16 @@ table ChatData {
   is_member: bool;
   is_pinned: bool;
   is_muted: bool;
+  my_read_id: long;
+  peer_read_id: long;
+  unread: int;
+  is_archived: bool;
+  draft: string;
+  draft_at_unix_ms: long;
+  peer_delivered_id: long;
+  member_rights: long;
+  my_rights: long;
+  rules: ChatRules;
 }
 
 table ChatOpenDirect {
@@ -171,12 +223,76 @@ table MessageSend {
   text: string;
   forward_name: string;
   attachments: [MessageAttachment];
+  reply_to_id: long;
+  entities: [MessageEntity];
+  thread_id: long;
+  poll: PollData;
+}
+
+table MessageEdit {
+  chat_id: string;
+  message_id: long;
+  text: string;
+  entities: [MessageEntity];
+}
+
+table MessageDelete {
+  chat_id: string;
+  message_ids: [long];
+  for_everyone: bool;
+}
+
+table MessagesDeleted {
+  chat_id: string;
+  message_ids: [long];
 }
 
 table HistoryGet {
   chat_id: string;
   before_id: long;
   limit: int;
+  thread_id: long;
+}
+
+table MessagePinSet {
+  chat_id: string;
+  message_id: long;
+  is_pinned: bool;
+}
+
+table PinsGet {
+  chat_id: string;
+}
+
+table PinsData {
+  chat_id: string;
+  message_ids: [long];
+}
+
+table PostCommenter {
+  subject: string;
+  first_name: string;
+  last_name: string;
+  photo_media_id: string;
+  video_media_id: string;
+}
+
+table PostStat {
+  message_id: long;
+  views: int;
+  comments: int;
+  recent: [PostCommenter];
+}
+
+table PostStatsGet {
+  chat_id: string;
+  message_ids: [long];
+  mark_viewed: bool;
+}
+
+table PostStatsData {
+  chat_id: string;
+  items: [PostStat];
 }
 
 table HistoryData {
@@ -339,6 +455,7 @@ table ChatMemberData {
   photo_media_id: string;
   video_media_id: string;
   role: int;
+  rights: long;
 }
 
 table ChatMembersData {
@@ -349,11 +466,47 @@ table ChatMemberAdd {
   chat_id: string;
   subject: string;
   role: int;
+  rights: long;
 }
 
 table ChatMemberRemove {
   chat_id: string;
   subject: string;
+  ban: bool;
+}
+
+table ChatMemberUnban {
+  chat_id: string;
+  subject: string;
+}
+
+table ChatBansGet {
+  chat_id: string;
+}
+
+table ChatInfoSet {
+  chat_id: string;
+  title: string;
+  about: string;
+  link: string;
+}
+
+table ChatRules {
+  no_copy: bool;
+  signs: bool;
+  reactions_mode: ubyte;
+  reactions: [string];
+  reactions_per_post: ubyte;
+}
+
+table ChatRulesSet {
+  chat_id: string;
+  rules: ChatRules;
+}
+
+table ChatRightsSet {
+  chat_id: string;
+  member_rights: long;
 }
 
 table ChatSearch {
@@ -519,4 +672,132 @@ table ChatPinSet {
 table ChatMuteSet {
   chat_id: string;
   is_muted: bool;
+}
+
+table ChatReadSet {
+  chat_id: string;
+  up_to_id: long;
+}
+
+table ReadData {
+  chat_id: string;
+  my_read_id: long;
+  peer_read_id: long;
+  unread: int;
+  peer_delivered_id: long;
+}
+
+table ChatDeliveredSet {
+  chat_id: string;
+  up_to_id: long;
+}
+
+table ReactionSet {
+  chat_id: string;
+  message_id: long;
+  emoji: string;
+}
+
+table PollVote {
+  chat_id: string;
+  message_id: long;
+  options: [int];
+}
+
+table PollClose {
+  chat_id: string;
+  message_id: long;
+}
+
+table ChatArchiveSet {
+  chat_id: string;
+  is_archived: bool;
+}
+
+table DraftSet {
+  chat_id: string;
+  text: string;
+}
+
+table DraftData {
+  chat_id: string;
+  text: string;
+  updated_at_unix_ms: long;
+}
+
+table SettingsGet {
+  key: string;
+}
+
+table SettingsPut {
+  key: string;
+  data: [ubyte];
+}
+
+table SettingsData {
+  key: string;
+  version: long;
+  data: [ubyte];
+}
+
+table WallpapersGet {
+}
+
+table WallpaperData {
+  id: string;
+  name: string;
+  media_id: string;
+}
+
+table WallpapersData {
+  items: [WallpaperData];
+}
+
+table ChatLogGet {
+  chat_id: string;
+}
+
+table ChatLogEntryData {
+  id: long;
+  actor_subject: string;
+  actor_name: string;
+  kind: int;
+  detail: string;
+  at_unix_ms: long;
+}
+
+table ChatLogData {
+  entries: [ChatLogEntryData];
+}
+
+table ChatReadersGet {
+  chat_id: string;
+  message_id: long;
+}
+
+table TypingSet {
+  chat_id: string;
+  thread_id: long;
+}
+
+table TypingEvent {
+  chat_id: string;
+  thread_id: long;
+  subject: string;
+  name: string;
+}
+
+table LinkPreviewGet {
+  url: string;
+}
+
+table LinkPreviewData {
+  found: bool;
+  url: string;
+  site: string;
+  title: string;
+  summary: string;
+  photo_media_id: string;
+  width: int;
+  height: int;
 }

@@ -73,6 +73,28 @@ func (r *Media) IsProfileMedia(ctx context.Context, id, viewer string) (bool, er
 	return found, nil
 }
 
+func (r *Media) IsCatalogMedia(ctx context.Context, id string) (bool, error) {
+	var found bool
+
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM wallpapers WHERE media_id = $1)`, id).Scan(&found)
+	if err != nil {
+		return false, fmt.Errorf("select catalog media: %w", err)
+	}
+
+	return found, nil
+}
+
+func (r *Media) IsPreviewMedia(ctx context.Context, id string) (bool, error) {
+	var found bool
+
+	err := r.pool.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM link_previews WHERE photo_media_id = $1)`, id).Scan(&found)
+	if err != nil {
+		return false, fmt.Errorf("select preview media: %w", err)
+	}
+
+	return found, nil
+}
+
 func (r *Media) IsChatMedia(ctx context.Context, id, viewer string) (bool, error) {
 	var found bool
 

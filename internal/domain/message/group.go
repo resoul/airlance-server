@@ -57,8 +57,9 @@ type NewChat struct {
 }
 
 type Member struct {
-	Peer Peer
-	Role Role
+	Peer   Peer
+	Role   Role
+	Rights Rights
 }
 
 func (n NewChat) Checked() (NewChat, error) {
@@ -70,22 +71,39 @@ func (n NewChat) Checked() (NewChat, error) {
 		return NewChat{}, ErrInvalidClientID
 	}
 
-	n.Title = strings.TrimSpace(n.Title)
-	if n.Title == "" || !utf8.ValidString(n.Title) || utf8.RuneCountInString(n.Title) > MaxTitleLength {
-		return NewChat{}, ErrInvalidTitle
+	info, err := ChatInfo{Title: n.Title, About: n.About, Link: n.Link}.Checked()
+	if err != nil {
+		return NewChat{}, err
 	}
 
-	n.About = strings.TrimSpace(n.About)
-	if !utf8.ValidString(n.About) || utf8.RuneCountInString(n.About) > MaxAboutLength {
-		return NewChat{}, ErrInvalidAbout
-	}
-
-	n.Link = strings.ToLower(strings.TrimSpace(n.Link))
-	if n.Link != "" && !linkPattern.MatchString(n.Link) {
-		return NewChat{}, ErrInvalidLink
-	}
+	n.Title, n.About, n.Link = info.Title, info.About, info.Link
 
 	return n, nil
+}
+
+type ChatInfo struct {
+	Title string
+	About string
+	Link  string
+}
+
+func (i ChatInfo) Checked() (ChatInfo, error) {
+	i.Title = strings.TrimSpace(i.Title)
+	if i.Title == "" || !utf8.ValidString(i.Title) || utf8.RuneCountInString(i.Title) > MaxTitleLength {
+		return ChatInfo{}, ErrInvalidTitle
+	}
+
+	i.About = strings.TrimSpace(i.About)
+	if !utf8.ValidString(i.About) || utf8.RuneCountInString(i.About) > MaxAboutLength {
+		return ChatInfo{}, ErrInvalidAbout
+	}
+
+	i.Link = strings.ToLower(strings.TrimSpace(i.Link))
+	if i.Link != "" && !linkPattern.MatchString(i.Link) {
+		return ChatInfo{}, ErrInvalidLink
+	}
+
+	return i, nil
 }
 
 func (r Role) Manages(other Role) bool {

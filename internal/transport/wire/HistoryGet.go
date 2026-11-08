@@ -73,8 +73,20 @@ func (rcv *HistoryGet) MutateLimit(n int32) bool {
 	return rcv._tab.MutateInt32Slot(8, n)
 }
 
+func (rcv *HistoryGet) ThreadId() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(10))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *HistoryGet) MutateThreadId(n int64) bool {
+	return rcv._tab.MutateInt64Slot(10, n)
+}
+
 func HistoryGetStart(builder *flatbuffers.Builder) {
-	builder.StartObject(3)
+	builder.StartObject(4)
 }
 func HistoryGetAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
@@ -84,6 +96,9 @@ func HistoryGetAddBeforeId(builder *flatbuffers.Builder, beforeId int64) {
 }
 func HistoryGetAddLimit(builder *flatbuffers.Builder, limit int32) {
 	builder.PrependInt32Slot(2, limit, 0)
+}
+func HistoryGetAddThreadId(builder *flatbuffers.Builder, threadId int64) {
+	builder.PrependInt64Slot(3, threadId, 0)
 }
 func HistoryGetEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

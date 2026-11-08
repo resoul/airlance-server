@@ -36,6 +36,13 @@ type MessageData struct {
 	AgentName    string
 	ForwardName  string
 	Attachments  []Attachment
+	ReplyToID    int64
+	Entities     []Entity
+	EditedAtMs   int64
+	ThreadID     int64
+	Reactions    []ReactionCount
+	MyReaction   string
+	Poll         *Poll
 }
 
 type Attachment struct {
@@ -50,6 +57,9 @@ type Attachment struct {
 	Waveform     []byte
 	Title        string
 	Performer    string
+	Latitude     float64
+	Longitude    float64
+	Phone        string
 }
 
 type ChatData struct {
@@ -71,6 +81,16 @@ type ChatData struct {
 	IsMember         bool
 	IsPinned         bool
 	IsMuted          bool
+	MyReadID         int64
+	PeerReadID       int64
+	PeerDeliveredID  int64
+	MemberRights     int64
+	MyRights         int64
+	Rules            ChatRules
+	Unread           int32
+	IsArchived       bool
+	Draft            string
+	DraftAtMs        int64
 }
 
 type MessageSend struct {
@@ -79,12 +99,17 @@ type MessageSend struct {
 	Text        string
 	ForwardName string
 	Attachments []Attachment
+	ReplyToID   int64
+	Entities    []Entity
+	ThreadID    int64
+	Poll        *Poll
 }
 
 type HistoryGet struct {
 	ChatID   string
 	BeforeID int64
 	Limit    int32
+	ThreadID int64
 }
 
 func DecodeChatOpenDirect(body []byte) (string, error) {
@@ -118,6 +143,10 @@ func DecodeMessageSend(body []byte) (MessageSend, error) {
 			Text:        string(table.Text()),
 			ForwardName: string(table.ForwardName()),
 			Attachments: readSendAttachments(table),
+			ReplyToID:   table.ReplyToId(),
+			Entities:    readEntities(table.EntitiesLength(), table.Entities),
+			ThreadID:    table.ThreadId(),
+			Poll:        readPoll(table.Poll(nil)),
 		}
 	})
 
@@ -131,7 +160,13 @@ func EncodeMessageSend(send MessageSend) []byte {
 	text := builder.CreateString(send.Text)
 	forward := builder.CreateString(send.ForwardName)
 	attachments := buildAttachments(builder, send.Attachments, wire.MessageSendStartAttachmentsVector)
+	entities := buildEntities(builder, send.Entities, wire.MessageSendStartEntitiesVector)
+	poll := buildPoll(builder, send.Poll)
 	wire.MessageSendStart(builder)
+	wire.MessageSendAddReplyToId(builder, send.ReplyToID)
+	wire.MessageSendAddThreadId(builder, send.ThreadID)
+	wire.MessageSendAddPoll(builder, poll)
+	wire.MessageSendAddEntities(builder, entities)
 	wire.MessageSendAddForwardName(builder, forward)
 	wire.MessageSendAddAttachments(builder, attachments)
 	wire.MessageSendAddChatId(builder, chat)
@@ -147,7 +182,9 @@ func DecodeHistoryGet(body []byte) (HistoryGet, error) {
 
 	err := safely(func() {
 		table := wire.GetRootAsHistoryGet(body, 0)
-		get = HistoryGet{ChatID: string(table.ChatId()), BeforeID: table.BeforeId(), Limit: table.Limit()}
+		get = HistoryGet{
+			ChatID: string(table.ChatId()), BeforeID: table.BeforeId(), Limit: table.Limit(), ThreadID: table.ThreadId(),
+		}
 	})
 
 	return get, err
@@ -160,6 +197,7 @@ func EncodeHistoryGet(get HistoryGet) []byte {
 	wire.HistoryGetAddChatId(builder, chat)
 	wire.HistoryGetAddBeforeId(builder, get.BeforeID)
 	wire.HistoryGetAddLimit(builder, get.Limit)
+	wire.HistoryGetAddThreadId(builder, get.ThreadID)
 	builder.Finish(wire.HistoryGetEnd(builder))
 
 	return builder.FinishedBytes()
@@ -196,7 +234,18 @@ func buildMessage(builder *flatbuffers.Builder, data MessageData) flatbuffers.UO
 	agentName := builder.CreateString(data.AgentName)
 	forward := builder.CreateString(data.ForwardName)
 	attachments := buildAttachments(builder, data.Attachments, wire.MessageDataStartAttachmentsVector)
+	entities := buildEntities(builder, data.Entities, wire.MessageDataStartEntitiesVector)
+	reactions := buildReactions(builder, data.Reactions)
+	myReaction := builder.CreateString(data.MyReaction)
+	poll := buildPoll(builder, data.Poll)
 	wire.MessageDataStart(builder)
+	wire.MessageDataAddReplyToId(builder, data.ReplyToID)
+	wire.MessageDataAddReactions(builder, reactions)
+	wire.MessageDataAddMyReaction(builder, myReaction)
+	wire.MessageDataAddPoll(builder, poll)
+	wire.MessageDataAddThreadId(builder, data.ThreadID)
+	wire.MessageDataAddEntities(builder, entities)
+	wire.MessageDataAddEditedAtUnixMs(builder, data.EditedAtMs)
 	wire.MessageDataAddForwardName(builder, forward)
 	wire.MessageDataAddAttachments(builder, attachments)
 	wire.MessageDataAddAgentName(builder, agentName)
@@ -228,6 +277,7 @@ func buildAttachments(
 		waveform := builder.CreateByteVector(next.Waveform)
 		title := builder.CreateString(next.Title)
 		performer := builder.CreateString(next.Performer)
+		phone := builder.CreateString(next.Phone)
 		wire.MessageAttachmentStart(builder)
 		wire.MessageAttachmentAddKind(builder, next.Kind)
 		wire.MessageAttachmentAddMediaId(builder, media)
@@ -240,6 +290,9 @@ func buildAttachments(
 		wire.MessageAttachmentAddWaveform(builder, waveform)
 		wire.MessageAttachmentAddTitle(builder, title)
 		wire.MessageAttachmentAddPerformer(builder, performer)
+		wire.MessageAttachmentAddLatitude(builder, next.Latitude)
+		wire.MessageAttachmentAddLongitude(builder, next.Longitude)
+		wire.MessageAttachmentAddPhone(builder, phone)
 		offsets[index] = wire.MessageAttachmentEnd(builder)
 	}
 
@@ -265,6 +318,9 @@ func readAttachment(row *wire.MessageAttachment) Attachment {
 		Waveform:     append([]byte(nil), row.WaveformBytes()...),
 		Title:        string(row.Title()),
 		Performer:    string(row.Performer()),
+		Latitude:     row.Latitude(),
+		Longitude:    row.Longitude(),
+		Phone:        string(row.Phone()),
 	}
 }
 
@@ -331,6 +387,13 @@ func readMessage(table *wire.MessageData) MessageData {
 		AgentName:    string(table.AgentName()),
 		ForwardName:  string(table.ForwardName()),
 		Attachments:  readDataAttachments(table),
+		ReplyToID:    table.ReplyToId(),
+		Entities:     readEntities(table.EntitiesLength(), table.Entities),
+		EditedAtMs:   table.EditedAtUnixMs(),
+		ThreadID:     table.ThreadId(),
+		Reactions:    readReactions(table),
+		MyReaction:   string(table.MyReaction()),
+		Poll:         readPoll(table.Poll(nil)),
 	}
 }
 
@@ -368,6 +431,8 @@ func buildChat(builder *flatbuffers.Builder, data ChatData) flatbuffers.UOffsetT
 	about := builder.CreateString(data.About)
 	link := builder.CreateString(data.Link)
 	invite := builder.CreateString(data.InviteToken)
+	draft := builder.CreateString(data.Draft)
+	rules := buildRules(builder, data.Rules)
 	wire.ChatDataStart(builder)
 	wire.ChatDataAddKind(builder, data.Kind)
 	wire.ChatDataAddTitle(builder, title)
@@ -379,6 +444,16 @@ func buildChat(builder *flatbuffers.Builder, data ChatData) flatbuffers.UOffsetT
 	wire.ChatDataAddIsMember(builder, data.IsMember)
 	wire.ChatDataAddIsPinned(builder, data.IsPinned)
 	wire.ChatDataAddIsMuted(builder, data.IsMuted)
+	wire.ChatDataAddMyReadId(builder, data.MyReadID)
+	wire.ChatDataAddPeerReadId(builder, data.PeerReadID)
+	wire.ChatDataAddUnread(builder, data.Unread)
+	wire.ChatDataAddIsArchived(builder, data.IsArchived)
+	wire.ChatDataAddDraft(builder, draft)
+	wire.ChatDataAddDraftAtUnixMs(builder, data.DraftAtMs)
+	wire.ChatDataAddPeerDeliveredId(builder, data.PeerDeliveredID)
+	wire.ChatDataAddMemberRights(builder, data.MemberRights)
+	wire.ChatDataAddMyRights(builder, data.MyRights)
+	wire.ChatDataAddRules(builder, rules)
 	wire.ChatDataAddChatId(builder, chat)
 	wire.ChatDataAddPeerSubject(builder, subject)
 	wire.ChatDataAddPeerFirstName(builder, first)
@@ -412,6 +487,16 @@ func readChat(table *wire.ChatData) ChatData {
 		IsMember:         table.IsMember(),
 		IsPinned:         table.IsPinned(),
 		IsMuted:          table.IsMuted(),
+		MyReadID:         table.MyReadId(),
+		PeerReadID:       table.PeerReadId(),
+		Unread:           table.Unread(),
+		IsArchived:       table.IsArchived(),
+		Draft:            string(table.Draft()),
+		DraftAtMs:        table.DraftAtUnixMs(),
+		PeerDeliveredID:  table.PeerDeliveredId(),
+		MemberRights:     table.MemberRights(),
+		MyRights:         table.MyRights(),
+		Rules:            readRules(table.Rules(nil)),
 	}
 
 	if last := table.LastMessage(nil); last != nil {
@@ -531,4 +616,53 @@ func DecodeChatsData(body []byte) ([]ChatData, error) {
 	})
 
 	return chats, err
+}
+
+type ChatRules struct {
+	NoCopy        bool
+	Signs         bool
+	ReactionsMode uint8
+	Reactions     []string
+	PerPost       uint8
+}
+
+func buildRules(builder *flatbuffers.Builder, rules ChatRules) flatbuffers.UOffsetT {
+	offsets := make([]flatbuffers.UOffsetT, len(rules.Reactions))
+	for index, emoji := range rules.Reactions {
+		offsets[index] = builder.CreateString(emoji)
+	}
+
+	wire.ChatRulesStartReactionsVector(builder, len(offsets))
+
+	for index := len(offsets) - 1; index >= 0; index-- {
+		builder.PrependUOffsetT(offsets[index])
+	}
+
+	reactions := builder.EndVector(len(offsets))
+
+	wire.ChatRulesStart(builder)
+	wire.ChatRulesAddNoCopy(builder, rules.NoCopy)
+	wire.ChatRulesAddSigns(builder, rules.Signs)
+	wire.ChatRulesAddReactionsMode(builder, rules.ReactionsMode)
+	wire.ChatRulesAddReactions(builder, reactions)
+	wire.ChatRulesAddReactionsPerPost(builder, rules.PerPost)
+
+	return wire.ChatRulesEnd(builder)
+}
+
+func readRules(table *wire.ChatRules) ChatRules {
+	if table == nil {
+		return ChatRules{}
+	}
+
+	rules := ChatRules{
+		NoCopy: table.NoCopy(), Signs: table.Signs(),
+		ReactionsMode: table.ReactionsMode(), PerPost: table.ReactionsPerPost(),
+	}
+
+	for index := range table.ReactionsLength() {
+		rules.Reactions = append(rules.Reactions, string(table.Reactions(index)))
+	}
+
+	return rules
 }

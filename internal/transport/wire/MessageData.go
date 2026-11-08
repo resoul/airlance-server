@@ -165,8 +165,105 @@ func (rcv *MessageData) AttachmentsLength() int {
 	return 0
 }
 
+func (rcv *MessageData) ReplyToId() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(30))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *MessageData) MutateReplyToId(n int64) bool {
+	return rcv._tab.MutateInt64Slot(30, n)
+}
+
+func (rcv *MessageData) Entities(obj *MessageEntity, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(32))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *MessageData) EntitiesLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(32))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *MessageData) EditedAtUnixMs() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(34))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *MessageData) MutateEditedAtUnixMs(n int64) bool {
+	return rcv._tab.MutateInt64Slot(34, n)
+}
+
+func (rcv *MessageData) ThreadId() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(36))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *MessageData) MutateThreadId(n int64) bool {
+	return rcv._tab.MutateInt64Slot(36, n)
+}
+
+func (rcv *MessageData) Reactions(obj *ReactionCount, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(38))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *MessageData) ReactionsLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(38))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *MessageData) MyReaction() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(40))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *MessageData) Poll(obj *PollData) *PollData {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(42))
+	if o != 0 {
+		x := rcv._tab.Indirect(o + rcv._tab.Pos)
+		if obj == nil {
+			obj = new(PollData)
+		}
+		obj.Init(rcv._tab.Bytes, x)
+		return obj
+	}
+	return nil
+}
+
 func MessageDataStart(builder *flatbuffers.Builder) {
-	builder.StartObject(13)
+	builder.StartObject(20)
 }
 func MessageDataAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
@@ -209,6 +306,33 @@ func MessageDataAddAttachments(builder *flatbuffers.Builder, attachments flatbuf
 }
 func MessageDataStartAttachmentsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
+}
+func MessageDataAddReplyToId(builder *flatbuffers.Builder, replyToId int64) {
+	builder.PrependInt64Slot(13, replyToId, 0)
+}
+func MessageDataAddEntities(builder *flatbuffers.Builder, entities flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(14, flatbuffers.UOffsetT(entities), 0)
+}
+func MessageDataStartEntitiesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func MessageDataAddEditedAtUnixMs(builder *flatbuffers.Builder, editedAtUnixMs int64) {
+	builder.PrependInt64Slot(15, editedAtUnixMs, 0)
+}
+func MessageDataAddThreadId(builder *flatbuffers.Builder, threadId int64) {
+	builder.PrependInt64Slot(16, threadId, 0)
+}
+func MessageDataAddReactions(builder *flatbuffers.Builder, reactions flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(17, flatbuffers.UOffsetT(reactions), 0)
+}
+func MessageDataStartReactionsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func MessageDataAddMyReaction(builder *flatbuffers.Builder, myReaction flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(18, flatbuffers.UOffsetT(myReaction), 0)
+}
+func MessageDataAddPoll(builder *flatbuffers.Builder, poll flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(19, flatbuffers.UOffsetT(poll), 0)
 }
 func MessageDataEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

@@ -21,20 +21,45 @@ const linkConstraint = "chats_link_key"
 const chatSelect = `
 	SELECT c.id, c.kind, c.title, c.about, COALESCE(c.link, ''),
 		CASE WHEN COALESCE(m.role, 0) >= 1 THEN COALESCE(c.invite_token, '') ELSE '' END,
-		c.member_count, COALESCE(m.role, 0), m.subject IS NOT NULL, COALESCE(c.last_message_id, 0),
+		c.member_count, COALESCE(m.role, 0), m.subject IS NOT NULL,
+		COALESCE((
+			SELECT x.message_id FROM messages x
+			WHERE x.chat_id = c.id AND x.deleted_at IS NULL AND x.thread_id = 0 AND NOT EXISTS (
+				SELECT 1 FROM message_hidden h
+				WHERE h.subject = $1 AND h.chat_id = x.chat_id AND h.message_id = x.message_id
+			)
+			ORDER BY x.message_id DESC LIMIT 1
+		), 0),
 		COALESCE(o.subject, ''), COALESCE(p.first_name, ''), COALESCE(p.last_name, ''), COALESCE(p.username, ''),
 		CASE WHEN COALESCE(q.photos, 0) = 2 OR b.owner IS NOT NULL OR (q.photos = 1 AND t.owner IS NULL) THEN ''
 			ELSE COALESCE(p.photo_media_id, '') END,
 		CASE WHEN COALESCE(q.photos, 0) = 2 OR b.owner IS NOT NULL OR (q.photos = 1 AND t.owner IS NULL) THEN ''
 			ELSE COALESCE(p.video_media_id, '') END,
-		COALESCE(m.is_pinned, false), COALESCE(m.is_muted, false)
+		COALESCE(m.is_pinned, false), COALESCE(m.is_muted, false),
+		COALESCE(m.read_up_to, 0), COALESCE(o.read_up_to, 0),
+		CASE WHEN m.subject IS NULL THEN 0 ELSE (
+			SELECT count(*) FROM (
+				SELECT 1 FROM messages x
+				WHERE x.chat_id = c.id AND x.thread_id = 0 AND x.deleted_at IS NULL AND x.sender <> $1
+					AND x.message_id > COALESCE(m.read_up_to, 0) AND NOT EXISTS (
+						SELECT 1 FROM message_hidden h
+						WHERE h.subject = $1 AND h.chat_id = x.chat_id AND h.message_id = x.message_id
+					)
+				LIMIT 1000
+			) u
+		) END,
+		COALESCE(m.is_archived, false), COALESCE(d.text, ''),
+		COALESCE((extract(epoch FROM d.updated_at) * 1000)::bigint, 0),
+		COALESCE(o.delivered_up_to, 0), COALESCE(m.rights, 0), c.member_rights,
+		c.no_copy, c.signs, c.reactions_mode, c.reactions, c.reactions_per_post
 	FROM chats c
 	LEFT JOIN chat_members m ON m.chat_id = c.id AND m.subject = $1
 	LEFT JOIN chat_members o ON c.kind = 0 AND o.chat_id = c.id AND o.subject <> $1
 	LEFT JOIN profiles p ON p.subject = o.subject
 	LEFT JOIN profile_privacy q ON q.subject = o.subject
 	LEFT JOIN blocks b ON b.owner = o.subject AND b.blocked = $1
-	LEFT JOIN contacts t ON t.owner = o.subject AND t.contact = $1`
+	LEFT JOIN contacts t ON t.owner = o.subject AND t.contact = $1
+	LEFT JOIN chat_drafts d ON d.chat_id = c.id AND d.subject = $1`
 
 func (r *Messages) Chats(ctx context.Context, subject string, before int64, limit int) ([]domain.Chat, error) {
 	return r.selectChats(ctx, subject, chatSelect+`
@@ -90,6 +115,9 @@ func (r *Messages) selectChats(ctx context.Context, subject, query string, args 
 			&chat.ID, &chat.Kind, &chat.Title, &chat.About, &chat.Link, &chat.InviteToken, &chat.MemberCount, &chat.Role,
 			&chat.IsMember, &last, &peer.Subject, &peer.FirstName, &peer.LastName, &peer.Username,
 			&peer.PhotoMediaID, &peer.VideoMediaID, &chat.IsPinned, &chat.IsMuted,
+			&chat.MyReadID, &chat.PeerReadID, &chat.Unread, &chat.IsArchived, &chat.Draft, &chat.DraftAtMs,
+			&chat.PeerDeliveredID, &chat.AdminRights, &chat.MemberRights,
+			&chat.Rules.NoCopy, &chat.Rules.Signs, &chat.Rules.ReactionsMode, &chat.Rules.Reactions, &chat.Rules.PerPost,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("scan chat: %w", err)
@@ -105,6 +133,10 @@ func (r *Messages) selectChats(ctx context.Context, subject, query string, args 
 
 	found, err := messagesByRef(ctx, r.pool, refs)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := attachMineByRef(ctx, r.pool, subject, found); err != nil {
 		return nil, err
 	}
 
@@ -251,9 +283,16 @@ func (r *Messages) AddMember(
 	ctx context.Context,
 	chatID, actor, subject string,
 	role domain.Role,
+	rights domain.Rights,
 	now time.Time,
 ) ([]string, error) {
 	var woken []string
+
+	if role == domain.RoleMember {
+		rights = 0
+	}
+
+	rights = domain.CleanAdminRights(rights)
 
 	err := pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
 		kind, err := lockChat(ctx, tx, chatID)
@@ -261,34 +300,21 @@ func (r *Messages) AddMember(
 			return err
 		}
 
-		actorRole, isMember, err := roleIn(ctx, tx, chatID, actor)
+		access, err := requireAccess(ctx, tx, chatID, actor)
 		if err != nil {
 			return err
 		}
 
-		if !isMember {
-			return domain.ErrChatNotFound
-		}
-
-		if actorRole < domain.RoleAdmin || (role > domain.RoleMember && actorRole != domain.RoleOwner) {
-			return domain.ErrNotAllowed
-		}
-
-		current, exists, err := roleIn(ctx, tx, chatID, subject)
+		current, exists, err := accessIn(ctx, tx, chatID, subject)
 		if err != nil {
 			return err
 		}
 
-		if exists && (current == role || !actorRole.Manages(current)) {
-			return nil
-		}
-
-		if exists {
-			_, err = tx.Exec(ctx, `UPDATE chat_members SET role = $3 WHERE chat_id = $1 AND subject = $2`, chatID, subject, role)
-			if err != nil {
-				return fmt.Errorf("update role: %w", err)
-			}
-		} else if err := addMember(ctx, tx, chatID, subject, role, now); err != nil {
+		changed, err := applyMember(ctx, tx, memberChange{
+			chatID: chatID, actor: access, by: actor, subject: subject, role: role, rights: rights, current: current,
+			exists: exists, now: now,
+		})
+		if err != nil || !changed {
 			return err
 		}
 
@@ -301,6 +327,107 @@ func (r *Messages) AddMember(
 	}
 
 	return woken, nil
+}
+
+type memberChange struct {
+	chatID  string
+	actor   domain.Access
+	by      string
+	subject string
+	role    domain.Role
+	rights  domain.Rights
+	current domain.Access
+	exists  bool
+	now     time.Time
+}
+
+func applyMember(ctx context.Context, tx pgx.Tx, change memberChange) (bool, error) {
+	if !change.exists {
+		if err := checkMayAdd(ctx, tx, change); err != nil {
+			return false, err
+		}
+
+		if err := addMember(ctx, tx, change.chatID, change.subject, change.role, change.now); err != nil {
+			return false, err
+		}
+
+		if err := setAdminRights(ctx, tx, change); err != nil {
+			return false, err
+		}
+
+		return true, logRole(ctx, tx, change, domain.RoleMember)
+	}
+
+	if change.current.Role == change.role && change.current.Admin == change.rights {
+		return false, nil
+	}
+
+	if !change.actor.Can(domain.RightPromote) || !change.actor.Role.Manages(change.current.Role) ||
+		!change.actor.CanGrant(change.rights) {
+		return false, domain.ErrNotAllowed
+	}
+
+	_, err := tx.Exec(ctx, `
+		UPDATE chat_members SET role = $3, rights = $4 WHERE chat_id = $1 AND subject = $2`,
+		change.chatID, change.subject, change.role, change.rights,
+	)
+	if err != nil {
+		return false, fmt.Errorf("update role: %w", err)
+	}
+
+	return true, logRole(ctx, tx, change, change.current.Role)
+}
+
+func logRole(ctx context.Context, tx pgx.Tx, change memberChange, before domain.Role) error {
+	var kind domain.LogKind
+
+	switch {
+	case before == domain.RoleMember && change.role == domain.RoleAdmin:
+		kind = domain.LogAdminAdded
+	case before == domain.RoleAdmin && change.role == domain.RoleMember:
+		kind = domain.LogAdminRemoved
+	default:
+		return nil
+	}
+
+	return insertLog(ctx, tx, change.chatID, change.by, change.subject, domain.LogEntry{Kind: kind})
+}
+
+func checkMayAdd(ctx context.Context, tx pgx.Tx, change memberChange) error {
+	if change.role == domain.RoleAdmin {
+		if !change.actor.Can(domain.RightPromote) || !change.actor.CanGrant(change.rights) {
+			return domain.ErrNotAllowed
+		}
+	} else if !change.actor.Can(domain.RightInvite) {
+		return domain.ErrNotAllowed
+	}
+
+	banned, err := isBanned(ctx, tx, change.chatID, change.subject)
+	if err != nil {
+		return err
+	}
+
+	if banned {
+		return domain.ErrNotAllowed
+	}
+
+	return nil
+}
+
+func setAdminRights(ctx context.Context, tx pgx.Tx, change memberChange) error {
+	if change.role != domain.RoleAdmin {
+		return nil
+	}
+
+	_, err := tx.Exec(ctx, `
+		UPDATE chat_members SET rights = $3 WHERE chat_id = $1 AND subject = $2`,
+		change.chatID, change.subject, change.rights,
+	)
+	if err != nil {
+		return fmt.Errorf("set rights: %w", err)
+	}
+
+	return nil
 }
 
 func addMember(ctx context.Context, tx pgx.Tx, chatID, subject string, role domain.Role, now time.Time) error {
@@ -366,6 +493,15 @@ func (r *Messages) Join(ctx context.Context, code, subject string, now time.Time
 			return err
 		}
 
+		banned, err := isBanned(ctx, tx, chatID, subject)
+		if err != nil {
+			return err
+		}
+
+		if banned {
+			return domain.ErrNotAllowed
+		}
+
 		if err := addMember(ctx, tx, chatID, subject, domain.RoleMember, now); err != nil {
 			return err
 		}
@@ -381,7 +517,12 @@ func (r *Messages) Join(ctx context.Context, code, subject string, now time.Time
 	return chatID, woken, nil
 }
 
-func (r *Messages) RemoveMember(ctx context.Context, chatID, actor, subject string) ([]string, error) {
+func (r *Messages) RemoveMember(
+	ctx context.Context,
+	chatID, actor, subject string,
+	ban bool,
+	now time.Time,
+) ([]string, error) {
 	var woken []string
 
 	err := pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
@@ -390,26 +531,32 @@ func (r *Messages) RemoveMember(ctx context.Context, chatID, actor, subject stri
 			return err
 		}
 
-		actorRole, isMember, err := roleIn(ctx, tx, chatID, actor)
+		access, err := requireAccess(ctx, tx, chatID, actor)
 		if err != nil {
 			return err
 		}
 
-		if !isMember {
-			return domain.ErrChatNotFound
-		}
-
-		role, exists, err := roleIn(ctx, tx, chatID, subject)
+		target, exists, err := accessIn(ctx, tx, chatID, subject)
 		if err != nil || !exists {
 			return err
 		}
 
-		if actor != subject && !actorRole.Manages(role) {
+		if actor != subject && (!access.Can(domain.RightBan) || !access.Role.Manages(target.Role)) {
 			return domain.ErrNotAllowed
 		}
 
-		if err := dropMember(ctx, tx, chatID, subject, role); err != nil {
+		if err := dropMember(ctx, tx, chatID, subject, target.Role); err != nil {
 			return err
+		}
+
+		if ban && actor != subject {
+			if err := insertBan(ctx, tx, chatID, subject, actor, now); err != nil {
+				return err
+			}
+
+			if err := insertLog(ctx, tx, chatID, actor, subject, domain.LogEntry{Kind: domain.LogBanned}); err != nil {
+				return err
+			}
 		}
 
 		woken, err = wakeAfterChange(ctx, tx, chatID, kind, subject)
@@ -456,7 +603,7 @@ func (r *Messages) Members(ctx context.Context, chatID, subject string, limit in
 		SELECT o.subject, COALESCE(p.first_name, ''), COALESCE(p.last_name, ''), COALESCE(p.username, ''),
 			CASE WHEN COALESCE(q.photos, 0) = 0 THEN COALESCE(p.photo_media_id, '') ELSE '' END,
 			CASE WHEN COALESCE(q.photos, 0) = 0 THEN COALESCE(p.video_media_id, '') ELSE '' END,
-			o.role
+			o.role, o.rights
 		FROM chat_members m
 		JOIN chats c ON c.id = m.chat_id
 		JOIN chat_members o ON o.chat_id = m.chat_id
@@ -475,7 +622,7 @@ func (r *Messages) Members(ctx context.Context, chatID, subject string, limit in
 
 		peer := &next.Peer
 		err := row.Scan(
-			&peer.Subject, &peer.FirstName, &peer.LastName, &peer.Username, &peer.PhotoMediaID, &peer.VideoMediaID, &next.Role,
+			&peer.Subject, &peer.FirstName, &peer.LastName, &peer.Username, &peer.PhotoMediaID, &peer.VideoMediaID, &next.Role, &next.Rights,
 		)
 
 		return next, err
@@ -601,16 +748,12 @@ func (r *Messages) ResetInvite(ctx context.Context, chatID, actor, token string)
 			return err
 		}
 
-		role, isMember, err := roleIn(ctx, tx, chatID, actor)
+		access, err := requireAccess(ctx, tx, chatID, actor)
 		if err != nil {
 			return err
 		}
 
-		if !isMember {
-			return domain.ErrChatNotFound
-		}
-
-		if role < domain.RoleAdmin {
+		if access.Role < domain.RoleAdmin || !access.Can(domain.RightInvite) {
 			return domain.ErrNotAllowed
 		}
 

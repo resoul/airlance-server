@@ -3,11 +3,13 @@ package postgres
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
-	domain "go.airlance.org/server/internal/domain/profile"
+	domain "go.airlance.org/server/internal/domain/message"
+	"go.airlance.org/server/internal/domain/profile"
 	"go.airlance.org/server/internal/domain/update"
 )
 
@@ -38,7 +40,7 @@ func (r *Updates) After(ctx context.Context, subject string, after uint64, limit
 		return nil, err
 	}
 
-	var own domain.Profile
+	var own profile.Profile
 	if needsProfile {
 		own, err = NewProfiles(r.pool).Get(ctx, subject)
 		if err != nil {
@@ -51,8 +53,55 @@ func (r *Updates) After(ctx context.Context, subject string, after uint64, limit
 		return nil, err
 	}
 
+	hidden, err := hiddenFor(ctx, r.pool, subject, refs)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := attachMineByRef(ctx, r.pool, subject, found); err != nil {
+		return nil, err
+	}
+
+	pins, err := pinsFor(ctx, r.pool, pinChats(updates))
+	if err != nil {
+		return nil, err
+	}
+
 	for index := range updates {
 		next := &updates[index]
+		if next.Kind == update.KindSettings {
+			next.Setting, err = readSettings(ctx, r.pool, subject, next.Message.ChatID)
+			if err != nil {
+				return nil, err
+			}
+
+			continue
+		}
+
+		if next.Kind == update.KindDraft {
+			next.Draft, err = draftState(ctx, r.pool, subject, next.Message.ChatID)
+			if err != nil {
+				return nil, err
+			}
+
+			continue
+		}
+
+		if next.Kind == update.KindRead {
+			next.Read, err = readState(ctx, r.pool, subject, next.Message.ChatID)
+			if err != nil {
+				return nil, err
+			}
+
+			continue
+		}
+
+		if next.Kind == update.KindPins {
+			next.Pins = pins[next.Message.ChatID]
+
+			continue
+		}
+
 		if next.Kind == update.KindProfile {
 			next.Profile = own
 
@@ -66,6 +115,13 @@ func (r *Updates) After(ctx context.Context, subject string, after uint64, limit
 		message, ok := found[messageRef{chatID: next.Message.ChatID, id: next.Message.ID}]
 		if !ok {
 			return nil, fmt.Errorf("update %d points to a missing message", next.Seq)
+		}
+
+		if message.IsDeleted || hidden[messageRef{chatID: message.ChatID, id: message.ID}] {
+			next.Kind = update.KindGone
+			next.Message = domain.Message{ChatID: message.ChatID, ID: message.ID}
+
+			continue
 		}
 
 		next.Message = message.ForViewer(subject)
@@ -115,7 +171,8 @@ func (r *Updates) journal(
 			needsProfile = true
 		case update.KindMessage:
 			refs = append(refs, messageRef{chatID: next.Message.ChatID, id: next.Message.ID})
-		case update.KindStories, update.KindContacts, update.KindChats, update.KindScheduled, update.KindFolders:
+		case update.KindStories, update.KindContacts, update.KindChats, update.KindScheduled, update.KindFolders,
+			update.KindGone, update.KindPins, update.KindRead, update.KindDraft, update.KindSettings:
 		}
 
 		updates = append(updates, next)
@@ -159,4 +216,16 @@ func appendMessageUpdate(ctx context.Context, tx pgx.Tx, subject, chatID string,
 	}
 
 	return nil
+}
+
+func pinChats(updates []update.Update) []string {
+	var chats []string
+
+	for _, next := range updates {
+		if next.Kind == update.KindPins && !slices.Contains(chats, next.Message.ChatID) {
+			chats = append(chats, next.Message.ChatID)
+		}
+	}
+
+	return chats
 }

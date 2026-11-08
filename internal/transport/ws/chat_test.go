@@ -64,6 +64,16 @@ func (f fakeMessaging) SendContent(
 	return f.Send(ctx, principal, chatID, clientID, outgoing.Text)
 }
 
+func (f fakeMessaging) Thread(
+	ctx context.Context,
+	principal identity.Principal,
+	chatID string,
+	_, before int64,
+	limit int,
+) ([]message.Message, error) {
+	return f.History(ctx, principal, chatID, before, limit)
+}
+
 func (fakeMessaging) History(
 	_ context.Context,
 	_ identity.Principal,

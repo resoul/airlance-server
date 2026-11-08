@@ -143,7 +143,7 @@ func (s *Service) Leave(ctx context.Context, principal identity.Principal, chatI
 		return identity.ErrForbidden
 	}
 
-	woken, err := s.repository.RemoveMember(ctx, chatID, principal.Subject, principal.Subject)
+	woken, err := s.repository.RemoveMember(ctx, chatID, principal.Subject, principal.Subject, false, s.now())
 	if err != nil {
 		return fmt.Errorf("leave chat: %w", err)
 	}
@@ -158,6 +158,7 @@ func (s *Service) AddMember(
 	principal identity.Principal,
 	chatID, subject string,
 	role domain.Role,
+	rights domain.Rights,
 ) ([]domain.Member, error) {
 	if !principal.HasScope(domain.ScopeWrite) {
 		return nil, identity.ErrForbidden
@@ -178,7 +179,7 @@ func (s *Service) AddMember(
 		}
 	}
 
-	woken, err := s.repository.AddMember(ctx, chatID, principal.Subject, subject, role, s.now())
+	woken, err := s.repository.AddMember(ctx, chatID, principal.Subject, subject, role, rights, s.now())
 	if err != nil {
 		return nil, fmt.Errorf("add member: %w", err)
 	}
@@ -192,12 +193,13 @@ func (s *Service) RemoveMember(
 	ctx context.Context,
 	principal identity.Principal,
 	chatID, subject string,
+	ban bool,
 ) ([]domain.Member, error) {
 	if !principal.HasScope(domain.ScopeWrite) {
 		return nil, identity.ErrForbidden
 	}
 
-	woken, err := s.repository.RemoveMember(ctx, chatID, principal.Subject, subject)
+	woken, err := s.repository.RemoveMember(ctx, chatID, principal.Subject, subject, ban, s.now())
 	if err != nil {
 		return nil, fmt.Errorf("remove member: %w", err)
 	}
@@ -205,6 +207,110 @@ func (s *Service) RemoveMember(
 	s.wake(woken)
 
 	return s.Members(ctx, principal, chatID)
+}
+
+func (s *Service) SetMemberRights(
+	ctx context.Context,
+	principal identity.Principal,
+	chatID string,
+	rights domain.Rights,
+) (domain.Chat, error) {
+	if !principal.HasScope(domain.ScopeWrite) {
+		return domain.Chat{}, identity.ErrForbidden
+	}
+
+	woken, err := s.repository.SetMemberRights(ctx, chatID, principal.Subject, rights)
+	if err != nil {
+		return domain.Chat{}, fmt.Errorf("set member rights: %w", err)
+	}
+
+	s.wake(woken)
+
+	return s.chatOf(ctx, chatID, principal.Subject)
+}
+
+func (s *Service) SetInfo(
+	ctx context.Context,
+	principal identity.Principal,
+	chatID string,
+	info domain.ChatInfo,
+) (domain.Chat, error) {
+	if !principal.HasScope(domain.ScopeWrite) {
+		return domain.Chat{}, identity.ErrForbidden
+	}
+
+	checked, err := info.Checked()
+	if err != nil {
+		return domain.Chat{}, fmt.Errorf("check info: %w", err)
+	}
+
+	token, err := newChatID()
+	if err != nil {
+		return domain.Chat{}, err
+	}
+
+	woken, err := s.repository.SetInfo(ctx, chatID, principal.Subject, checked, token)
+	if err != nil {
+		return domain.Chat{}, fmt.Errorf("set info: %w", err)
+	}
+
+	s.wake(woken)
+
+	return s.chatOf(ctx, chatID, principal.Subject)
+}
+
+func (s *Service) SetRules(
+	ctx context.Context,
+	principal identity.Principal,
+	chatID string,
+	rules domain.ChatRules,
+) (domain.Chat, error) {
+	if !principal.HasScope(domain.ScopeWrite) {
+		return domain.Chat{}, identity.ErrForbidden
+	}
+
+	checked, err := rules.Checked()
+	if err != nil {
+		return domain.Chat{}, fmt.Errorf("check rules: %w", err)
+	}
+
+	woken, err := s.repository.SetRules(ctx, chatID, principal.Subject, checked)
+	if err != nil {
+		return domain.Chat{}, fmt.Errorf("set rules: %w", err)
+	}
+
+	s.wake(woken)
+
+	return s.chatOf(ctx, chatID, principal.Subject)
+}
+
+func (s *Service) Bans(ctx context.Context, principal identity.Principal, chatID string) ([]domain.Member, error) {
+	if !principal.HasScope(domain.ScopeRead) {
+		return nil, identity.ErrForbidden
+	}
+
+	bans, err := s.repository.Bans(ctx, chatID, principal.Subject, domain.MaxMembersPage)
+	if err != nil {
+		return nil, fmt.Errorf("read bans: %w", err)
+	}
+
+	return bans, nil
+}
+
+func (s *Service) Unban(
+	ctx context.Context,
+	principal identity.Principal,
+	chatID, subject string,
+) ([]domain.Member, error) {
+	if !principal.HasScope(domain.ScopeWrite) {
+		return nil, identity.ErrForbidden
+	}
+
+	if err := s.repository.Unban(ctx, chatID, principal.Subject, subject); err != nil {
+		return nil, fmt.Errorf("unban: %w", err)
+	}
+
+	return s.Bans(ctx, principal, chatID)
 }
 
 func (s *Service) Members(

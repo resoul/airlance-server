@@ -214,8 +214,125 @@ func (rcv *ChatData) MutateIsMuted(n bool) bool {
 	return rcv._tab.MutateBoolSlot(38, n)
 }
 
+func (rcv *ChatData) MyReadId() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(40))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutateMyReadId(n int64) bool {
+	return rcv._tab.MutateInt64Slot(40, n)
+}
+
+func (rcv *ChatData) PeerReadId() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(42))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutatePeerReadId(n int64) bool {
+	return rcv._tab.MutateInt64Slot(42, n)
+}
+
+func (rcv *ChatData) Unread() int32 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(44))
+	if o != 0 {
+		return rcv._tab.GetInt32(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutateUnread(n int32) bool {
+	return rcv._tab.MutateInt32Slot(44, n)
+}
+
+func (rcv *ChatData) IsArchived() bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(46))
+	if o != 0 {
+		return rcv._tab.GetBool(o + rcv._tab.Pos)
+	}
+	return false
+}
+
+func (rcv *ChatData) MutateIsArchived(n bool) bool {
+	return rcv._tab.MutateBoolSlot(46, n)
+}
+
+func (rcv *ChatData) Draft() []byte {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(48))
+	if o != 0 {
+		return rcv._tab.ByteVector(o + rcv._tab.Pos)
+	}
+	return nil
+}
+
+func (rcv *ChatData) DraftAtUnixMs() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(50))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutateDraftAtUnixMs(n int64) bool {
+	return rcv._tab.MutateInt64Slot(50, n)
+}
+
+func (rcv *ChatData) PeerDeliveredId() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(52))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutatePeerDeliveredId(n int64) bool {
+	return rcv._tab.MutateInt64Slot(52, n)
+}
+
+func (rcv *ChatData) MemberRights() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(54))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutateMemberRights(n int64) bool {
+	return rcv._tab.MutateInt64Slot(54, n)
+}
+
+func (rcv *ChatData) MyRights() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(56))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *ChatData) MutateMyRights(n int64) bool {
+	return rcv._tab.MutateInt64Slot(56, n)
+}
+
+func (rcv *ChatData) Rules(obj *ChatRules) *ChatRules {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(58))
+	if o != 0 {
+		x := rcv._tab.Indirect(o + rcv._tab.Pos)
+		if obj == nil {
+			obj = new(ChatRules)
+		}
+		obj.Init(rcv._tab.Bytes, x)
+		return obj
+	}
+	return nil
+}
+
 func ChatDataStart(builder *flatbuffers.Builder) {
-	builder.StartObject(18)
+	builder.StartObject(28)
 }
 func ChatDataAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
@@ -270,6 +387,36 @@ func ChatDataAddIsPinned(builder *flatbuffers.Builder, isPinned bool) {
 }
 func ChatDataAddIsMuted(builder *flatbuffers.Builder, isMuted bool) {
 	builder.PrependBoolSlot(17, isMuted, false)
+}
+func ChatDataAddMyReadId(builder *flatbuffers.Builder, myReadId int64) {
+	builder.PrependInt64Slot(18, myReadId, 0)
+}
+func ChatDataAddPeerReadId(builder *flatbuffers.Builder, peerReadId int64) {
+	builder.PrependInt64Slot(19, peerReadId, 0)
+}
+func ChatDataAddUnread(builder *flatbuffers.Builder, unread int32) {
+	builder.PrependInt32Slot(20, unread, 0)
+}
+func ChatDataAddIsArchived(builder *flatbuffers.Builder, isArchived bool) {
+	builder.PrependBoolSlot(21, isArchived, false)
+}
+func ChatDataAddDraft(builder *flatbuffers.Builder, draft flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(22, flatbuffers.UOffsetT(draft), 0)
+}
+func ChatDataAddDraftAtUnixMs(builder *flatbuffers.Builder, draftAtUnixMs int64) {
+	builder.PrependInt64Slot(23, draftAtUnixMs, 0)
+}
+func ChatDataAddPeerDeliveredId(builder *flatbuffers.Builder, peerDeliveredId int64) {
+	builder.PrependInt64Slot(24, peerDeliveredId, 0)
+}
+func ChatDataAddMemberRights(builder *flatbuffers.Builder, memberRights int64) {
+	builder.PrependInt64Slot(25, memberRights, 0)
+}
+func ChatDataAddMyRights(builder *flatbuffers.Builder, myRights int64) {
+	builder.PrependInt64Slot(26, myRights, 0)
+}
+func ChatDataAddRules(builder *flatbuffers.Builder, rules flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(27, flatbuffers.UOffsetT(rules), 0)
 }
 func ChatDataEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

@@ -85,7 +85,7 @@ func TestMigrationsGoUpAndDownCleanly(t *testing.T) {
 	}
 
 	state, err = database.MigrationVersion(ctx, address)
-	if err != nil || !state.Applied || state.IsDirty || state.Version != 1 {
+	if err != nil || !state.Applied || state.IsDirty || state.Version != 5 {
 		t.Fatalf("got %+v, %v", state, err)
 	}
 
@@ -93,11 +93,11 @@ func TestMigrationsGoUpAndDownCleanly(t *testing.T) {
 		t.Fatal("the partitions are missing")
 	}
 
-	if err := database.MigrateDown(ctx, address, 1); err != nil {
+	if err := database.MigrateDown(ctx, address, 5); err != nil {
 		t.Fatal(err)
 	}
 
-	for _, table := range []string{"profiles", "messages", "messages_15", "profile_photos_position", "agents", "scheduled_messages", "message_media", "chat_folder_lists"} {
+	for _, table := range []string{"profiles", "messages", "messages_15", "profile_photos_position", "agents", "scheduled_messages", "message_media", "chat_folder_lists", "poll_votes", "user_settings", "wallpapers", "chat_log", "link_previews"} {
 		if tableExists(ctx, t, address, table) {
 			t.Fatalf("%s survived the rollback", table)
 		}

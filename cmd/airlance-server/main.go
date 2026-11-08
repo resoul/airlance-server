@@ -59,6 +59,7 @@ func newRootCommand(logger *slog.Logger) *cobra.Command {
 		&cobra.Command{Use: "serve", Short: "Run the server (the default)", Args: cobra.NoArgs, RunE: serve},
 		newMigrateCommand(),
 		newSeedCommand(logger),
+		newWallpaperCommand(),
 		&cobra.Command{
 			Use:   "healthcheck",
 			Short: "Ask the running server whether it is ready",

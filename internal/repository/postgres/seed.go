@@ -117,6 +117,13 @@ func purgeRows(ctx context.Context, tx pgx.Tx, pattern string, chats []string) e
 	}{
 		{`UPDATE updates SET kind = $2, chat_id = NULL, message_id = NULL WHERE chat_id = ANY($1)`,
 			[]any{chats, int16(update.KindChats)}},
+		{`DELETE FROM message_reactions WHERE chat_id = ANY($1)`, []any{chats}},
+		{`DELETE FROM poll_votes WHERE chat_id = ANY($1)`, []any{chats}},
+		{`DELETE FROM message_views WHERE chat_id = ANY($1)`, []any{chats}},
+		{`DELETE FROM chat_pins WHERE chat_id = ANY($1)`, []any{chats}},
+		{`DELETE FROM chat_drafts WHERE chat_id = ANY($1)`, []any{chats}},
+		{`DELETE FROM message_hidden WHERE chat_id = ANY($1)`, []any{chats}},
+		{`DELETE FROM user_settings WHERE subject LIKE $1`, []any{pattern}},
 		{`DELETE FROM messages WHERE chat_id = ANY($1)`, []any{chats}},
 		{`DELETE FROM chat_members WHERE chat_id = ANY($1)`, []any{chats}},
 		{`DELETE FROM chats WHERE id = ANY($1)`, []any{chats}},

@@ -57,14 +57,29 @@ func (rcv *ChatMemberRemove) Subject() []byte {
 	return nil
 }
 
+func (rcv *ChatMemberRemove) Ban() bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(8))
+	if o != 0 {
+		return rcv._tab.GetBool(o + rcv._tab.Pos)
+	}
+	return false
+}
+
+func (rcv *ChatMemberRemove) MutateBan(n bool) bool {
+	return rcv._tab.MutateBoolSlot(8, n)
+}
+
 func ChatMemberRemoveStart(builder *flatbuffers.Builder) {
-	builder.StartObject(2)
+	builder.StartObject(3)
 }
 func ChatMemberRemoveAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
 }
 func ChatMemberRemoveAddSubject(builder *flatbuffers.Builder, subject flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(1, flatbuffers.UOffsetT(subject), 0)
+}
+func ChatMemberRemoveAddBan(builder *flatbuffers.Builder, ban bool) {
+	builder.PrependBoolSlot(2, ban, false)
 }
 func ChatMemberRemoveEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

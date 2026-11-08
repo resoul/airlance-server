@@ -93,8 +93,65 @@ func (rcv *MessageSend) AttachmentsLength() int {
 	return 0
 }
 
+func (rcv *MessageSend) ReplyToId() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(14))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *MessageSend) MutateReplyToId(n int64) bool {
+	return rcv._tab.MutateInt64Slot(14, n)
+}
+
+func (rcv *MessageSend) Entities(obj *MessageEntity, j int) bool {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
+	if o != 0 {
+		x := rcv._tab.Vector(o)
+		x += flatbuffers.UOffsetT(j) * 4
+		x = rcv._tab.Indirect(x)
+		obj.Init(rcv._tab.Bytes, x)
+		return true
+	}
+	return false
+}
+
+func (rcv *MessageSend) EntitiesLength() int {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(16))
+	if o != 0 {
+		return rcv._tab.VectorLen(o)
+	}
+	return 0
+}
+
+func (rcv *MessageSend) ThreadId() int64 {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(18))
+	if o != 0 {
+		return rcv._tab.GetInt64(o + rcv._tab.Pos)
+	}
+	return 0
+}
+
+func (rcv *MessageSend) MutateThreadId(n int64) bool {
+	return rcv._tab.MutateInt64Slot(18, n)
+}
+
+func (rcv *MessageSend) Poll(obj *PollData) *PollData {
+	o := flatbuffers.UOffsetT(rcv._tab.Offset(20))
+	if o != 0 {
+		x := rcv._tab.Indirect(o + rcv._tab.Pos)
+		if obj == nil {
+			obj = new(PollData)
+		}
+		obj.Init(rcv._tab.Bytes, x)
+		return obj
+	}
+	return nil
+}
+
 func MessageSendStart(builder *flatbuffers.Builder) {
-	builder.StartObject(5)
+	builder.StartObject(9)
 }
 func MessageSendAddChatId(builder *flatbuffers.Builder, chatId flatbuffers.UOffsetT) {
 	builder.PrependUOffsetTSlot(0, flatbuffers.UOffsetT(chatId), 0)
@@ -113,6 +170,21 @@ func MessageSendAddAttachments(builder *flatbuffers.Builder, attachments flatbuf
 }
 func MessageSendStartAttachmentsVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
 	return builder.StartVector(4, numElems, 4)
+}
+func MessageSendAddReplyToId(builder *flatbuffers.Builder, replyToId int64) {
+	builder.PrependInt64Slot(5, replyToId, 0)
+}
+func MessageSendAddEntities(builder *flatbuffers.Builder, entities flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(6, flatbuffers.UOffsetT(entities), 0)
+}
+func MessageSendStartEntitiesVector(builder *flatbuffers.Builder, numElems int) flatbuffers.UOffsetT {
+	return builder.StartVector(4, numElems, 4)
+}
+func MessageSendAddThreadId(builder *flatbuffers.Builder, threadId int64) {
+	builder.PrependInt64Slot(7, threadId, 0)
+}
+func MessageSendAddPoll(builder *flatbuffers.Builder, poll flatbuffers.UOffsetT) {
+	builder.PrependUOffsetTSlot(8, flatbuffers.UOffsetT(poll), 0)
 }
 func MessageSendEnd(builder *flatbuffers.Builder) flatbuffers.UOffsetT {
 	return builder.EndObject()

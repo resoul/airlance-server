@@ -11,17 +11,20 @@ import (
 )
 
 type attachmentRow struct {
-	Kind         int32  `json:"kind"`
-	MediaID      string `json:"media_id"`
-	ThumbMediaID string `json:"thumb_media_id,omitempty"`
-	Name         string `json:"name,omitempty"`
-	Size         int64  `json:"size,omitempty"`
-	Width        int32  `json:"width,omitempty"`
-	Height       int32  `json:"height,omitempty"`
-	DurationMs   int32  `json:"duration_ms,omitempty"`
-	Waveform     []byte `json:"waveform,omitempty"`
-	Title        string `json:"title,omitempty"`
-	Performer    string `json:"performer,omitempty"`
+	Kind         int32   `json:"kind"`
+	MediaID      string  `json:"media_id"`
+	ThumbMediaID string  `json:"thumb_media_id,omitempty"`
+	Name         string  `json:"name,omitempty"`
+	Size         int64   `json:"size,omitempty"`
+	Width        int32   `json:"width,omitempty"`
+	Height       int32   `json:"height,omitempty"`
+	DurationMs   int32   `json:"duration_ms,omitempty"`
+	Waveform     []byte  `json:"waveform,omitempty"`
+	Title        string  `json:"title,omitempty"`
+	Performer    string  `json:"performer,omitempty"`
+	Latitude     float64 `json:"lat,omitempty"`
+	Longitude    float64 `json:"lon,omitempty"`
+	Phone        string  `json:"phone,omitempty"`
 }
 
 func encodeAttachments(attachments []domain.Attachment) ([]byte, error) {
@@ -31,6 +34,7 @@ func encodeAttachments(attachments []domain.Attachment) ([]byte, error) {
 			Kind: int32(next.Kind), MediaID: next.MediaID, ThumbMediaID: next.ThumbMediaID, Name: next.Name,
 			Size: next.Size, Width: next.Width, Height: next.Height, DurationMs: next.DurationMs,
 			Waveform: next.Waveform, Title: next.Title, Performer: next.Performer,
+			Latitude: next.Latitude, Longitude: next.Longitude, Phone: next.Phone,
 		}
 	}
 
@@ -58,6 +62,7 @@ func decodeAttachments(raw []byte) ([]domain.Attachment, error) {
 			Kind: domain.AttachmentKind(next.Kind), MediaID: next.MediaID, ThumbMediaID: next.ThumbMediaID, Name: next.Name,
 			Size: next.Size, Width: next.Width, Height: next.Height, DurationMs: next.DurationMs,
 			Waveform: next.Waveform, Title: next.Title, Performer: next.Performer,
+			Latitude: next.Latitude, Longitude: next.Longitude, Phone: next.Phone,
 		}
 	}
 

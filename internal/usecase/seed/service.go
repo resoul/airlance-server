@@ -43,8 +43,34 @@ type Messaging interface {
 		principal identity.Principal,
 		chatID, subject string,
 		role message.Role,
+		rights message.Rights,
 	) ([]message.Member, error)
 	Send(ctx context.Context, principal identity.Principal, chatID, clientID, text string) (message.Message, error)
+	Edit(
+		ctx context.Context,
+		principal identity.Principal,
+		chatID string,
+		id int64,
+		text string,
+		entities []message.Entity,
+	) (message.Message, error)
+	SetPin(ctx context.Context, principal identity.Principal, chatID string, id int64, isPinned bool) ([]int64, error)
+	SetReaction(
+		ctx context.Context,
+		principal identity.Principal,
+		chatID string,
+		id int64,
+		emoji string,
+	) (message.Message, error)
+	Vote(
+		ctx context.Context,
+		principal identity.Principal,
+		chatID string,
+		id int64,
+		options []int32,
+	) (message.Message, error)
+	SetArchived(ctx context.Context, principal identity.Principal, chatID string, isArchived bool) (message.Chat, error)
+	SetDraft(ctx context.Context, principal identity.Principal, chatID, text string) (message.DraftState, error)
 	SendContent(
 		ctx context.Context,
 		principal identity.Principal,
@@ -186,6 +212,10 @@ func (s *Service) Run(ctx context.Context, username string) error {
 		return err
 	}
 
+	if err := s.writeFeatures(ctx, chats, viewer); err != nil {
+		return err
+	}
+
 	s.Clock.Set(time.Time{})
 
 	if err := s.applyPrivacy(ctx); err != nil {
@@ -324,7 +354,9 @@ func (s *Service) createRooms(ctx context.Context, viewer string) (map[string]st
 		s.printLink(next, chat)
 
 		for _, admin := range rolesAdmin[next.key] {
-			_, err := s.Messaging.AddMember(ctx, owner, chat.ID, subjectOf(admin), message.RoleAdmin)
+			_, err := s.Messaging.AddMember(
+				ctx, owner, chat.ID, subjectOf(admin), message.RoleAdmin, message.DefaultAdminRights,
+			)
 			if err != nil {
 				return nil, fmt.Errorf("promote in %s: %w", next.key, err)
 			}
@@ -336,7 +368,9 @@ func (s *Service) createRooms(ctx context.Context, viewer string) (map[string]st
 			}
 
 			if viewerAdmin[next.key] {
-				if _, err := s.Messaging.AddMember(ctx, owner, chat.ID, viewer, message.RoleAdmin); err != nil {
+				if _, err := s.Messaging.AddMember(
+					ctx, owner, chat.ID, viewer, message.RoleAdmin, message.DefaultAdminRights,
+				); err != nil {
 					return nil, fmt.Errorf("promote the viewer in %s: %w", next.key, err)
 				}
 			}

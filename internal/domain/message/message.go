@@ -43,6 +43,14 @@ type Message struct {
 	AgentName   string
 	ForwardName string
 	Attachments []Attachment
+	ReplyToID   int64
+	Entities    []Entity
+	EditedAt    time.Time
+	IsDeleted   bool
+	ThreadID    int64
+	Reactions   []ReactionCount
+	MyReaction  string
+	Poll        *Poll
 }
 
 type Delivery struct {
@@ -84,6 +92,18 @@ type Chat struct {
 	IsMember    bool
 	IsPinned    bool
 	IsMuted     bool
+	MyReadID    int64
+	PeerReadID  int64
+	Unread      int32
+	IsArchived  bool
+	Draft       string
+	DraftAtMs   int64
+
+	AdminRights  Rights
+	MemberRights Rights
+	Rules        ChatRules
+
+	PeerDeliveredID int64
 }
 
 func (m Message) ForViewer(viewer string) Message {
@@ -119,4 +139,37 @@ func DirectKey(first, second string) string {
 	sum := sha256.Sum256([]byte(first + "\x00" + second))
 
 	return hex.EncodeToString(sum[:])
+}
+
+func Revise(text string, attachments int, entities []Entity) (string, error) {
+	clean := strings.TrimSpace(text)
+	if !utf8.ValidString(clean) || utf8.RuneCountInString(clean) > MaxTextLength {
+		return "", ErrInvalidText
+	}
+
+	if clean == "" && attachments == 0 {
+		return "", ErrInvalidText
+	}
+
+	if err := checkEntities(entities); err != nil {
+		return "", err
+	}
+
+	return clean, nil
+}
+
+func (m Message) MayEdit(subject string, now time.Time) error {
+	if m.IsDeleted || m.Sender != subject || m.AgentID != "" || m.ForwardName != "" || m.Poll != nil {
+		return ErrNothingToEdit
+	}
+
+	if now.Sub(m.SentAt) > EditWindow {
+		return ErrEditExpired
+	}
+
+	return nil
+}
+
+func MayDeleteForAll(access Access, subject, sender string) bool {
+	return access.Kind == KindDirect || sender == subject || access.Can(RightDelete)
 }

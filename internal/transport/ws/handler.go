@@ -47,25 +47,34 @@ type Services struct {
 	Scheduler Scheduler
 	Agents    Agents
 	Folders   Folders
+	Settings  Settings
+	Previews  LinkPreviews
 }
 
 type Handler struct {
-	root      context.Context
-	secure    Handshaker
-	auth      Authenticator
-	profiles  Profiles
-	updates   Updates
-	media     Media
-	stories   Stories
-	privacy   Privacy
-	contacts  Contacts
-	directory Directory
-	messaging Messaging
-	scheduler Scheduler
-	agents    Agents
-	folders   Folders
-	limits    *limiter
-	logger    *slog.Logger
+	root         context.Context
+	secure       Handshaker
+	auth         Authenticator
+	profiles     Profiles
+	updates      Updates
+	media        Media
+	stories      Stories
+	privacy      Privacy
+	contacts     Contacts
+	directory    Directory
+	conversation Conversation
+	chatList     ChatList
+	admin        ChatAdmin
+	interactions Interactions
+	scheduler    Scheduler
+	agents       Agents
+	folders      Folders
+	settings     Settings
+	previews     LinkPreviews
+	table        map[codec.Kind]route
+	limits       *limiter
+	typing       *presence
+	logger       *slog.Logger
 }
 
 func NewHandler(
@@ -76,24 +85,33 @@ func NewHandler(
 	limits Limits,
 	logger *slog.Logger,
 ) *Handler {
-	return &Handler{
-		root:      root,
-		secure:    secure,
-		auth:      auth,
-		profiles:  services.Profiles,
-		updates:   services.Updates,
-		media:     services.Media,
-		stories:   services.Stories,
-		privacy:   services.Privacy,
-		contacts:  services.Contacts,
-		directory: services.Directory,
-		messaging: services.Messaging,
-		scheduler: services.Scheduler,
-		agents:    services.Agents,
-		folders:   services.Folders,
-		limits:    newLimiter(limits),
-		logger:    logger,
+	handler := &Handler{
+		root:         root,
+		secure:       secure,
+		auth:         auth,
+		profiles:     services.Profiles,
+		updates:      services.Updates,
+		media:        services.Media,
+		stories:      services.Stories,
+		privacy:      services.Privacy,
+		contacts:     services.Contacts,
+		directory:    services.Directory,
+		conversation: services.Messaging,
+		chatList:     services.Messaging,
+		admin:        services.Messaging,
+		interactions: services.Messaging,
+		scheduler:    services.Scheduler,
+		agents:       services.Agents,
+		folders:      services.Folders,
+		settings:     services.Settings,
+		previews:     services.Previews,
+		limits:       newLimiter(limits),
+		typing:       newPresence(),
+		logger:       logger,
 	}
+	handler.table = handler.routes()
+
+	return handler
 }
 
 func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
